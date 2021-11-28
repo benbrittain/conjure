@@ -1,0 +1,21 @@
+[package]
+name = "conjure"
+version = "0.1.0"
+authors = ["Benjamin Brittain <ben@brittain.org>"]
+edition = "2018"
+resolver = "2"
+
+[dependencies]
+argh = "0.1"
+rand = "0.8"
+nalgebra = "0.29"
+thiserror = "1"
+anyhow = "1"
+image = "0.23"
+winit = "0.25"
+cgmath = "0.18"
+env_logger = "0.9"
+log = "0.4"
+wgpu = "0.10"
+futures = {version = "*", features = ["executor"]}
+bytemuck = { version = "1.4", features = [ "derive" ] }
