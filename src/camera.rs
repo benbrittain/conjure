@@ -18,9 +18,7 @@ pub struct CameraUniform {
 impl CameraUniform {
     pub fn new() -> Self {
         use cgmath::SquareMatrix;
-        Self {
-            view_proj: cgmath::Matrix4::identity().into(),
-        }
+        Self { view_proj: cgmath::Matrix4::identity().into() }
     }
     pub fn update_view_proj(&mut self, camera: &mut Camera) {
         self.view_proj = camera.build_view_projection_matrix().into();

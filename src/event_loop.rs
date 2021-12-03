@@ -40,16 +40,10 @@ pub fn start() -> Result<(), Error> {
             // processing is about to begin. Do stuff like update state, calculation, etc... here
             window.request_redraw();
         }
-        Event::DeviceEvent {
-            ref event,
-            device_id: _,
-        } => {
+        Event::DeviceEvent { ref event, device_id: _ } => {
             render_state.device_input(event);
         }
-        Event::WindowEvent {
-            ref event,
-            window_id,
-        } if window_id == window.id() => match event {
+        Event::WindowEvent { ref event, window_id } if window_id == window.id() => match event {
             WindowEvent::CloseRequested
             | WindowEvent::KeyboardInput {
                 input:
