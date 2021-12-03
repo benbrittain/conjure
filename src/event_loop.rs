@@ -1,5 +1,5 @@
 use {
-    crate::State,
+    crate::render_state::RenderState,
     anyhow::Error,
     futures::executor,
     log::{error, warn},
@@ -13,7 +13,7 @@ use {
 pub fn start() -> Result<(), Error> {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop)?;
-    let mut render_state = executor::block_on(State::new(&window));
+    let mut render_state = executor::block_on(RenderState::new(&window));
     let mut last_render_time = std::time::Instant::now();
 
     event_loop.run(move |event, _, control_flow| match event {
