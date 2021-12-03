@@ -5,18 +5,17 @@ use {
     },
     anyhow::{anyhow, Error},
     argh::FromArgs,
-    futures::executor,
-    log::{error, info, warn},
+    log::{info, warn},
     std::path::PathBuf,
     wgpu::util::DeviceExt,
     winit::{
-        event::{DeviceEvent, ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
-        event_loop::{ControlFlow, EventLoop},
-        window::{Window, WindowBuilder},
+        event::{DeviceEvent, KeyboardInput, WindowEvent},
+        window::Window,
     },
 };
 
 mod camera;
+mod event_loop;
 mod model;
 mod texture;
 
@@ -358,74 +357,5 @@ fn main() -> Result<(), Error> {
         return Err(anyhow!("no support for PL yet"));
     }
 
-    let event_loop = EventLoop::new();
-    let window = WindowBuilder::new().build(&event_loop)?;
-
-    let mut state = executor::block_on(State::new(&window));
-
-    let mut last_render_time = std::time::Instant::now();
-
-    event_loop.run(move |event, _, control_flow| match event {
-        Event::RedrawRequested(_) => {
-            // Emitted after MainEventsCleared when a window should be redrawn.
-            // called when window is invalidated (ex: resize) or when explicitly requested by
-            // `Window::request_redraw`
-            let now = std::time::Instant::now();
-            let dt = now - last_render_time;
-            last_render_time = now;
-            state.update(dt);
-            match state.render() {
-                Ok(_) => {}
-                // Reconfigure the surface if lost
-                Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
-                // The system is out of memory, we should probably quit
-                Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-                // All other errors (Outdated, Timeout) should be resolved by the next frame
-                Err(e) => eprintln!("render error: {:?}", e),
-            }
-        }
-        Event::MainEventsCleared => {
-            // Emitted when all of the event loop’s input events have been processed and redraw
-            // processing is about to begin. Do stuff like update state, calculation, etc... here
-            window.request_redraw();
-        }
-        Event::DeviceEvent {
-            ref event,
-            device_id: _,
-        } => {
-            state.device_input(event);
-        }
-        Event::WindowEvent {
-            ref event,
-            window_id,
-        } if window_id == window.id() => match event {
-            WindowEvent::CloseRequested
-            | WindowEvent::KeyboardInput {
-                input:
-                    KeyboardInput {
-                        state: ElementState::Pressed,
-                        virtual_keycode: Some(VirtualKeyCode::Escape),
-                        ..
-                    },
-                ..
-            } => *control_flow = ControlFlow::Exit,
-            WindowEvent::KeyboardInput { .. } => {
-                state.input(event);
-            }
-            WindowEvent::Resized(physical_size) => {
-                state.resize(*physical_size);
-            }
-            WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                state.resize(**new_inner_size);
-            }
-            evt => warn!("unhandled window event: {:?}", evt),
-        },
-        Event::RedrawEventsCleared => {
-            // Emitted after all RedrawRequested events
-            // do cleanup after rendering here if needed.
-        }
-        Event::NewEvents(_) | Event::Suspended | Event::Resumed | Event::UserEvent(_) => {}
-        Event::WindowEvent { .. } => error!("bad window_id"),
-        Event::LoopDestroyed => return,
-    })
+    event_loop::start()
 }
