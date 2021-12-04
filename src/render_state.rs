@@ -9,7 +9,7 @@ use {
     log::warn,
     wgpu::util::DeviceExt,
     winit::{
-        event::{DeviceEvent, KeyboardInput, WindowEvent},
+        event::{DeviceEvent, ElementState, KeyboardInput, VirtualKeyCode, WindowEvent},
         window::Window,
     },
 };
@@ -232,14 +232,8 @@ impl RenderState {
                 input: KeyboardInput { state, virtual_keycode: Some(key), .. },
                 ..
             } => {
-                use winit::event::{ElementState, VirtualKeyCode};
-                match key {
-                    VirtualKeyCode::O => {
-                        if *state == ElementState::Pressed {
-                            self.render_octants = !self.render_octants;
-                        }
-                    }
-                    _ => {}
+                if *key == VirtualKeyCode::O && *state == ElementState::Pressed {
+                    self.render_octants = !self.render_octants;
                 }
                 self.camera_controller.process_keyboard(*key, *state)
             }

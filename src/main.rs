@@ -9,14 +9,15 @@ use {
 };
 
 mod camera;
+mod dual_contour;
 mod event_loop;
 mod model;
+mod octant_model;
 mod octree;
 mod render_state;
 mod shape;
 mod texture;
-
-mod octant_model;
+mod types;
 
 #[derive(FromArgs)]
 /// Conjure shapes.

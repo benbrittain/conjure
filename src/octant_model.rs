@@ -18,10 +18,14 @@ impl OctantMesh {
         use rand::Rng;
         let mut rng = rand::thread_rng();
         for octant in octants {
-            let r: f32 = rng.gen_range(0.0..1.0);
-            let g: f32 = rng.gen_range(0.0..1.0);
-            let b: f32 = rng.gen_range(0.0..1.0);
-            let color = [r, g, b];
+            let color = if octant.has_feature() {
+                let r: f32 = rng.gen_range(0.0..0.8);
+                let g: f32 = rng.gen_range(0.0..0.8);
+                let b: f32 = rng.gen_range(0.0..0.8);
+                [r, g, b]
+            } else {
+                [0.9, 0.9, 0.9]
+            };
             let x_axis = octant.x_axis;
             let y_axis = octant.y_axis;
             let z_axis = octant.z_axis;

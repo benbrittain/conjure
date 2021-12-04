@@ -1,5 +1,5 @@
 use {
-    crate::shape::ShapeFunc,
+    crate::{dual_contour, shape::ShapeFunc, types::Point},
     log::{info, warn},
 };
 
@@ -43,12 +43,17 @@ pub struct Octant {
     pub y_axis: OctAxis,
     pub z_axis: OctAxis,
     pub children: Option<[OctantIdx; 8]>,
+    feature: Option<Point>,
 }
 
 impl Octant {
     /// Creates a new leaf node octant.
-    fn new(x_axis: OctAxis, y_axis: OctAxis, z_axis: OctAxis) -> Octant {
-        Self { x_axis, y_axis, z_axis, children: None }
+    fn new(x_axis: OctAxis, y_axis: OctAxis, z_axis: OctAxis, feature: Option<Point>) -> Octant {
+        Self { x_axis, y_axis, z_axis, children: None, feature }
+    }
+
+    pub fn has_feature(&self) -> bool {
+        self.feature.is_some()
     }
 }
 
@@ -158,19 +163,18 @@ impl Octree {
         }
 
         // Create the new octant and connect it's children below
-        let root = self.add_octant(Octant::new(x_axis, y_axis, z_axis));
+        let root = self.add_octant(Octant::new(x_axis, y_axis, z_axis, None));
 
         // If the subdivide region already exists, return it's index,
         // otherwise create a new octant.
-        let octant_children = octant_children.zip(subdivides).map(|(child, [x, y, z])| {
-            match child {
+        let octant_children =
+            octant_children.zip(subdivides).map(|(child, [x, y, z])| match child {
                 Subdivided::Idx(idx) => idx,
-                Subdivided::Value(_v) => {
-                    // TODO: dual contour the feature here
-                    self.add_octant(Octant::new(x, y, z))
+                Subdivided::Value(_) => {
+                    let feature = dual_contour::new_feature(x, y, z, shape_func);
+                    self.add_octant(Octant::new(x, y, z, feature))
                 }
-            }
-        });
+            });
         self.octants[root].children = Some(octant_children);
 
         // This region is now the rootiest root, unless it's deep in the subdivide
