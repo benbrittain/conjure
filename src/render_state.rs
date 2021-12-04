@@ -1,7 +1,9 @@
 use {
     crate::{
         camera::{self, CameraUniform},
-        model::{self, DrawModel, Mesh, ModelVertex, Vertex},
+        model::{self, Vertex},
+        octant_model::{DrawOctant, OctantMesh},
+        octree::Octant,
         texture,
     },
     log::warn,
@@ -30,7 +32,8 @@ pub struct RenderState {
     camera: camera::Camera,
     camera_controller: camera::CameraController,
 
-    model: Option<Mesh>,
+    render_octants: bool,
+    octants: Option<OctantMesh>,
 }
 
 impl RenderState {
@@ -165,34 +168,6 @@ impl RenderState {
             },
         });
 
-        // Temporary Mesh Setup
-        let mut vertices = Vec::new();
-        let mut indices = Vec::new();
-        let color = [0.0, 1.0, 0.0];
-        vertices.push(ModelVertex { position: [0.0, 1.0, 0.0], color });
-        indices.push(indices.last().map(|&x| x + 1).unwrap_or(0));
-        vertices.push(ModelVertex { position: [100.0, 10.0, 0.0], color });
-        indices.push(indices.last().map(|&x| x + 1).unwrap_or(0));
-        vertices.push(ModelVertex { position: [100.0, 0.0, 10.0], color });
-        indices.push(indices.last().map(|&x| x + 1).unwrap_or(0));
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some(&format!("Vertex Buffer")),
-            contents: bytemuck::cast_slice(&vertices),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some(&format!("Index Buffer")),
-            contents: bytemuck::cast_slice(&indices),
-            usage: wgpu::BufferUsages::INDEX,
-        });
-
-        let mesh = Mesh {
-            name: String::from("test"),
-            vertex_buffer,
-            index_buffer,
-            num_elements: indices.len() as u32,
-        };
-
         RenderState {
             surface,
             device,
@@ -211,9 +186,14 @@ impl RenderState {
             camera,
             camera_controller,
 
-            // temporary model
-            model: Some(mesh),
+            // Octree octants
+            render_octants: false,
+            octants: None,
         }
+    }
+
+    pub fn set_octree_model(&mut self, octants: Vec<Octant>) {
+        self.octants = Some(OctantMesh::new(&self.device, &self.queue, &octants));
     }
 
     pub fn update(&mut self, lrt: std::time::Duration) {
@@ -239,12 +219,8 @@ impl RenderState {
 
     /// Process device input for the graphical state machine
     pub fn device_input(&mut self, event: &DeviceEvent) -> bool {
-        match event {
-            evt => {
-                warn!("Unhandled device input event: {:?}", evt);
-                false
-            }
-        }
+        warn!("Unhandled device input event: {:?}", event);
+        false
     }
 
     /// Process input for the graphical state machine
@@ -255,7 +231,18 @@ impl RenderState {
             WindowEvent::KeyboardInput {
                 input: KeyboardInput { state, virtual_keycode: Some(key), .. },
                 ..
-            } => self.camera_controller.process_keyboard(*key, *state),
+            } => {
+                use winit::event::{ElementState, VirtualKeyCode};
+                match key {
+                    VirtualKeyCode::O => {
+                        if *state == ElementState::Pressed {
+                            self.render_octants = !self.render_octants;
+                        }
+                    }
+                    _ => {}
+                }
+                self.camera_controller.process_keyboard(*key, *state)
+            }
             WindowEvent::MouseWheel { delta, .. } => self.camera_controller.process_scroll(delta),
             evt => {
                 warn!("Unhandled input event: {:?}", evt);
@@ -296,8 +283,10 @@ impl RenderState {
             render_pass.set_pipeline(&self.render_pipeline); // 2.
             render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
 
-            if let Some(model) = &self.model {
-                render_pass.draw_mesh(&model);
+            if let Some(octants) = &self.octants {
+                if self.render_octants {
+                    render_pass.draw_octants(octants);
+                }
             }
         }
 

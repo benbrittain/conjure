@@ -1,3 +1,5 @@
+#![feature(array_zip)]
+
 use {
     crate::{octree::Octree, shape::ShapeFunc},
     anyhow::{anyhow, Error},
@@ -13,6 +15,8 @@ mod octree;
 mod render_state;
 mod shape;
 mod texture;
+
+mod octant_model;
 
 #[derive(FromArgs)]
 /// Conjure shapes.
@@ -32,19 +36,15 @@ fn main() -> Result<(), Error> {
         return Err(anyhow!("no support for PL yet"));
     }
 
-    let mut tree = Octree::new(-8.0, 8.0);
+    let mut tree = Octree::new(-16.0, 16.0);
 
     tree.render_shape(
-        0.1,
+        1.0,
         ShapeFunc::new(move |x, y, z| {
-            f32::max(
-                z - 10.0,
-                f32::max(
-                    10.0 - z,
-                    f32::max(10.0 - y, f32::max(y - 10.0, f32::max(10.0 - x, x - 10.0))),
-                ),
-            )
+            (((0.0 - z) * (0.0 - z)) + ((0.0 - x) * (0.0 - x)) + ((0.0 - y) * (0.0 - y))).sqrt()
+                - 5.0
         }),
     );
-    event_loop::start()
+
+    event_loop::start(&mut tree)
 }

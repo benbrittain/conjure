@@ -1,5 +1,8 @@
 use {
-    crate::render_state::RenderState,
+    crate::{
+        octree::{Octant, Octree},
+        render_state::RenderState,
+    },
     anyhow::Error,
     futures::executor,
     log::{error, warn},
@@ -10,11 +13,15 @@ use {
     },
 };
 
-pub fn start() -> Result<(), Error> {
+pub fn start(octree: &mut Octree) -> Result<(), Error> {
+    let octants: Vec<Octant> = octree.clone().into_iter().collect();
+
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop)?;
     let mut render_state = executor::block_on(RenderState::new(&window));
     let mut last_render_time = std::time::Instant::now();
+
+    render_state.set_octree_model(octants);
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::RedrawRequested(_) => {
@@ -71,6 +78,6 @@ pub fn start() -> Result<(), Error> {
         }
         Event::NewEvents(_) | Event::Suspended | Event::Resumed | Event::UserEvent(_) => {}
         Event::WindowEvent { .. } => error!("bad window_id"),
-        Event::LoopDestroyed => return,
+        Event::LoopDestroyed => {}
     })
 }

@@ -1,7 +1,6 @@
 use {
     crate::shape::ShapeFunc,
     log::{info, warn},
-    std::ops::Range,
 };
 
 type OctantIdx = usize;
@@ -10,8 +9,9 @@ type OctantIdx = usize;
 type ShapeHandle = usize;
 
 /// Axis (range) of the Octree
+// TODO make private?
 #[derive(Debug, Clone, Copy)]
-struct OctAxis {
+pub struct OctAxis {
     pub lower: f32,
     pub upper: f32,
 }
@@ -37,11 +37,11 @@ impl OctAxis {
 }
 
 /// Represents each individual octant in the greater octree.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Octant {
-    x_axis: OctAxis,
-    y_axis: OctAxis,
-    z_axis: OctAxis,
+    pub x_axis: OctAxis,
+    pub y_axis: OctAxis,
+    pub z_axis: OctAxis,
     pub children: Option<[OctantIdx; 8]>,
 }
 
@@ -50,15 +50,10 @@ impl Octant {
     fn new(x_axis: OctAxis, y_axis: OctAxis, z_axis: OctAxis) -> Octant {
         Self { x_axis, y_axis, z_axis, children: None }
     }
-
-    /// Octant is a leaf node if there are no children.
-    pub fn is_leaf_node(&self) -> bool {
-        self.children.is_none()
-    }
 }
 
 /// Stores a 3d representation of the shape functions at arbitrary resolutions.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Octree {
     // Stores all octants in the octree, child/parent relationships are maintained
     // in the Octant itself.
@@ -85,7 +80,7 @@ impl Octree {
     pub fn render_shape(&mut self, resolution: f32, function: ShapeFunc) -> ShapeHandle {
         let depth = (self.range.length() / resolution).log2() as u8;
         info!("Rendering a shape at a resolution of {} (depth: {})", resolution, depth);
-        self.subdivide(self.range.clone(), self.range.clone(), self.range.clone(), depth, function);
+        self.subdivide(self.range, self.range, self.range, depth, function);
         warn!("Rendering a shape, ShapeHandle not yet implemented");
         0
     }
@@ -143,16 +138,19 @@ impl Octree {
         let (front_z, back_z) = z_axis.split();
         let new_depth = depth - 1;
 
-        let octant_children = [
-            self.subdivide(left_x, top_y, front_z, new_depth, shape_func),
-            self.subdivide(left_x, top_y, back_z, new_depth, shape_func),
-            self.subdivide(left_x, bottom_y, front_z, new_depth, shape_func),
-            self.subdivide(left_x, bottom_y, back_z, new_depth, shape_func),
-            self.subdivide(right_x, top_y, front_z, new_depth, shape_func),
-            self.subdivide(right_x, top_y, back_z, new_depth, shape_func),
-            self.subdivide(right_x, bottom_y, front_z, new_depth, shape_func),
-            self.subdivide(right_x, bottom_y, back_z, new_depth, shape_func),
+        let subdivides = [
+            [left_x, top_y, front_z],
+            [left_x, top_y, back_z],
+            [left_x, bottom_y, front_z],
+            [left_x, bottom_y, back_z],
+            [right_x, top_y, front_z],
+            [right_x, top_y, back_z],
+            [right_x, bottom_y, front_z],
+            [right_x, bottom_y, back_z],
         ];
+
+        let octant_children =
+            subdivides.map(|[x, y, z]| self.subdivide(x, y, z, new_depth, shape_func));
 
         // Merge octants if possible
         if let Some(merged_region) = Self::merge_octants(octant_children) {
@@ -164,12 +162,12 @@ impl Octree {
 
         // If the subdivide region already exists, return it's index,
         // otherwise create a new octant.
-        let octant_children = octant_children.map(|child| {
+        let octant_children = octant_children.zip(subdivides).map(|(child, [x, y, z])| {
             match child {
                 Subdivided::Idx(idx) => idx,
-                Subdivided::Value(v) => {
+                Subdivided::Value(_v) => {
                     // TODO: dual contour the feature here
-                    self.add_octant(Octant::new(left_x, top_y, front_z))
+                    self.add_octant(Octant::new(x, y, z))
                 }
             }
         });
@@ -180,5 +178,45 @@ impl Octree {
         self.root_idx = Some(root);
 
         Subdivided::Idx(root)
+    }
+}
+
+pub struct OctreeIter {
+    nodes: Vec<Octant>,
+    queue: Vec<OctantIdx>,
+}
+
+impl Iterator for OctreeIter {
+    type Item = Octant;
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            // As long as there are nodes in the queue, visit them.
+            let idx = match self.queue.pop() {
+                Some(idx) => idx,
+                None => return None,
+            };
+
+            // If a leaf node, return the octant.
+            // Otherwise, add the children to the queue for visiting.
+            match self.nodes[idx].children {
+                Some(children) => self.queue.extend_from_slice(&children),
+                None => return Some(self.nodes[idx].clone()),
+            }
+        }
+    }
+}
+
+impl IntoIterator for Octree {
+    type Item = Octant;
+    type IntoIter = OctreeIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        match self.root_idx {
+            Some(root_idx) => OctreeIter { nodes: self.octants, queue: vec![root_idx] },
+            None => {
+                eprintln!("Octree has no root index!");
+                OctreeIter { nodes: vec![], queue: vec![] }
+            }
+        }
     }
 }
