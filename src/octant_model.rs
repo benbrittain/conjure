@@ -15,146 +15,53 @@ impl OctantMesh {
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
 
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
         for octant in octants {
-            use rand::Rng;
-            let mut rng = rand::thread_rng();
             let r: f32 = rng.gen_range(0.0..1.0);
             let g: f32 = rng.gen_range(0.0..1.0);
             let b: f32 = rng.gen_range(0.0..1.0);
-            let color = [r as f32, g as f32, b as f32];
+            let color = [r, g, b];
+            let x_axis = octant.x_axis;
+            let y_axis = octant.y_axis;
+            let z_axis = octant.z_axis;
 
             for face in &[
                 (
-                    [
-                        octant.x_axis.lower as f32,
-                        octant.y_axis.upper as f32,
-                        octant.z_axis.lower as f32,
-                    ],
-                    [
-                        octant.x_axis.upper as f32,
-                        octant.y_axis.upper as f32,
-                        octant.z_axis.lower as f32,
-                    ],
-                    [
-                        octant.x_axis.lower as f32,
-                        octant.y_axis.lower as f32,
-                        octant.z_axis.lower as f32,
-                    ],
-                    [
-                        octant.x_axis.upper as f32,
-                        octant.y_axis.lower as f32,
-                        octant.z_axis.lower as f32,
-                    ],
+                    [x_axis.lower, y_axis.upper, z_axis.lower],
+                    [x_axis.upper, y_axis.upper, z_axis.lower],
+                    [x_axis.lower, y_axis.lower, z_axis.lower],
+                    [x_axis.upper, y_axis.lower, z_axis.lower],
                 ),
                 (
-                    [
-                        octant.x_axis.lower as f32,
-                        octant.y_axis.upper as f32,
-                        octant.z_axis.upper as f32,
-                    ],
-                    [
-                        octant.x_axis.upper as f32,
-                        octant.y_axis.upper as f32,
-                        octant.z_axis.upper as f32,
-                    ],
-                    [
-                        octant.x_axis.lower as f32,
-                        octant.y_axis.lower as f32,
-                        octant.z_axis.upper as f32,
-                    ],
-                    [
-                        octant.x_axis.upper as f32,
-                        octant.y_axis.lower as f32,
-                        octant.z_axis.upper as f32,
-                    ],
+                    [x_axis.lower, y_axis.upper, z_axis.upper],
+                    [x_axis.upper, y_axis.upper, z_axis.upper],
+                    [x_axis.lower, y_axis.lower, z_axis.upper],
+                    [x_axis.upper, y_axis.lower, z_axis.upper],
                 ),
                 (
-                    [
-                        octant.x_axis.lower as f32,
-                        octant.y_axis.upper as f32,
-                        octant.z_axis.lower as f32,
-                    ],
-                    [
-                        octant.x_axis.lower as f32,
-                        octant.y_axis.upper as f32,
-                        octant.z_axis.upper as f32,
-                    ],
-                    [
-                        octant.x_axis.lower as f32,
-                        octant.y_axis.lower as f32,
-                        octant.z_axis.lower as f32,
-                    ],
-                    [
-                        octant.x_axis.lower as f32,
-                        octant.y_axis.lower as f32,
-                        octant.z_axis.upper as f32,
-                    ],
+                    [x_axis.lower, y_axis.upper, z_axis.lower],
+                    [x_axis.lower, y_axis.upper, z_axis.upper],
+                    [x_axis.lower, y_axis.lower, z_axis.lower],
+                    [x_axis.lower, y_axis.lower, z_axis.upper],
                 ),
                 (
-                    [
-                        octant.x_axis.upper as f32,
-                        octant.y_axis.upper as f32,
-                        octant.z_axis.lower as f32,
-                    ],
-                    [
-                        octant.x_axis.upper as f32,
-                        octant.y_axis.upper as f32,
-                        octant.z_axis.upper as f32,
-                    ],
-                    [
-                        octant.x_axis.upper as f32,
-                        octant.y_axis.lower as f32,
-                        octant.z_axis.lower as f32,
-                    ],
-                    [
-                        octant.x_axis.upper as f32,
-                        octant.y_axis.lower as f32,
-                        octant.z_axis.upper as f32,
-                    ],
+                    [x_axis.upper, y_axis.upper, z_axis.lower],
+                    [x_axis.upper, y_axis.upper, z_axis.upper],
+                    [x_axis.upper, y_axis.lower, z_axis.lower],
+                    [x_axis.upper, y_axis.lower, z_axis.upper],
                 ),
                 (
-                    [
-                        octant.x_axis.lower as f32,
-                        octant.y_axis.lower as f32,
-                        octant.z_axis.upper as f32,
-                    ],
-                    [
-                        octant.x_axis.upper as f32,
-                        octant.y_axis.lower as f32,
-                        octant.z_axis.upper as f32,
-                    ],
-                    [
-                        octant.x_axis.lower as f32,
-                        octant.y_axis.lower as f32,
-                        octant.z_axis.lower as f32,
-                    ],
-                    [
-                        octant.x_axis.upper as f32,
-                        octant.y_axis.lower as f32,
-                        octant.z_axis.lower as f32,
-                    ],
+                    [x_axis.lower, y_axis.lower, z_axis.upper],
+                    [x_axis.upper, y_axis.lower, z_axis.upper],
+                    [x_axis.lower, y_axis.lower, z_axis.lower],
+                    [x_axis.upper, y_axis.lower, z_axis.lower],
                 ),
                 (
-                    [
-                        octant.x_axis.lower as f32,
-                        octant.y_axis.upper as f32,
-                        octant.z_axis.upper as f32,
-                    ],
-                    [
-                        octant.x_axis.upper as f32,
-                        octant.y_axis.upper as f32,
-                        octant.z_axis.upper as f32,
-                    ],
-                    [
-                        octant.x_axis.lower as f32,
-                        octant.y_axis.upper as f32,
-                        octant.z_axis.lower as f32,
-                    ],
-                    [
-                        octant.x_axis.upper as f32,
-                        octant.y_axis.upper as f32,
-                        octant.z_axis.lower as f32,
-                    ],
+                    [x_axis.lower, y_axis.upper, z_axis.upper],
+                    [x_axis.upper, y_axis.upper, z_axis.upper],
+                    [x_axis.lower, y_axis.upper, z_axis.lower],
+                    [x_axis.upper, y_axis.upper, z_axis.lower],
                 ),
             ] {
                 for edge in
