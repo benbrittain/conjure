@@ -1,5 +1,11 @@
 use {nalgebra::Vector3, std::ops::Sub};
 
+#[derive(PartialEq, Debug)]
+pub enum Face {
+    Triangle { ul: Point, lr: Point, ll: Point },
+    Plane { ul: Point, ur: Point, ll: Point, lr: Point },
+}
+
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub struct Point {
     pub x: f32,

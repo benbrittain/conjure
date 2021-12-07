@@ -1,12 +1,17 @@
 use {
-    crate::{dual_contour, shape::ShapeFunc, types::Point},
+    crate::{
+        dual_contour,
+        shape::ShapeFunc,
+        types::{Face, Point},
+    },
     log::{info, warn},
 };
 
-type OctantIdx = usize;
+/// Index into the Octree for a unique `Octant`
+pub type OctantIdx = usize;
 
 /// Handle to an object (created from a `ShapeFunc`) in the Octree.
-type ShapeHandle = usize;
+pub type ShapeHandle = usize;
 
 /// Axis (range) of the Octree
 // TODO make private?
@@ -52,8 +57,14 @@ impl Octant {
         Self { x_axis, y_axis, z_axis, children: None, feature }
     }
 
+    /// Returns a bool based on if the `Octant` contains a feature point.
     pub fn has_feature(&self) -> bool {
         self.feature.is_some()
+    }
+
+    /// Returns a bool based on if the Octant is a leaf node or not.
+    pub fn is_leaf(&self) -> bool {
+        self.children.is_none()
     }
 }
 
@@ -90,10 +101,22 @@ impl Octree {
         0
     }
 
+    pub fn extract_faces(&self) -> Vec<Face> {
+        match self.root_idx {
+            Some(idx) => dual_contour::cell_proc(self, idx),
+            None => vec![],
+        }
+    }
+
     /// Adds an Octant to the Octree returning an `OctantIdx` to represent it's place in the tree.
     fn add_octant(&mut self, oct: Octant) -> OctantIdx {
         self.octants.push(oct);
         self.octants.len() - 1
+    }
+
+    /// Returns a refrence to an `Octant` from an `OctantIdx`
+    pub fn get_octant(&self, idx: OctantIdx) -> &Octant {
+        &self.octants[idx]
     }
 
     /// Checks if the `Subdivided` regions can be merged into a single octant.

@@ -1,5 +1,9 @@
 use {
-    crate::{octree::OctAxis, types::Point, ShapeFunc},
+    crate::{
+        octree::{OctAxis, OctantIdx, Octree},
+        types::{Face, Point},
+        ShapeFunc,
+    },
     nalgebra::{linalg::SVD, MatrixXx1, MatrixXx3, RowVector1, RowVector3, Vector3},
 };
 
@@ -165,6 +169,234 @@ pub fn new_feature(
         let z = solution.data.0[0][2];
 
         Some(Point::new(x, y, z))
+    } else {
+        None
+    }
+}
+
+#[derive(PartialEq, Copy, Clone)]
+enum TreeAxis {
+    X = 0,
+    Y = 1,
+    Z = 2,
+}
+
+static CELL_FACE_MAP: [(usize, usize, TreeAxis); 12] = [
+    (4, 5, TreeAxis::X),
+    (0, 1, TreeAxis::X),
+    (2, 3, TreeAxis::X),
+    (6, 7, TreeAxis::X),
+    (0, 2, TreeAxis::Y),
+    (1, 3, TreeAxis::Y),
+    (5, 7, TreeAxis::Y),
+    (4, 6, TreeAxis::Y),
+    (0, 4, TreeAxis::Z),
+    (1, 5, TreeAxis::Z),
+    (3, 7, TreeAxis::Z),
+    (2, 6, TreeAxis::Z),
+];
+
+static CELL_EDGE_MAP: [(usize, usize, usize, usize, TreeAxis); 6] = [
+    (1, 5, 3, 7, TreeAxis::X),
+    (0, 4, 2, 6, TreeAxis::X),
+    (4, 5, 0, 1, TreeAxis::Y),
+    (6, 7, 2, 3, TreeAxis::Y),
+    (0, 1, 2, 3, TreeAxis::Z),
+    (4, 5, 6, 7, TreeAxis::Z),
+];
+
+static CELL_MAP: [[usize; 4]; 3] = [[0, 1, 0, 1], [0, 0, 1, 1], [1, 1, 0, 0]];
+static FACE_EDGE_MAP: [[(usize, usize, usize, usize, TreeAxis, usize); 4]; 3] = [
+    // TreeAxis::X
+    [
+        (5, 4, 1, 0, TreeAxis::Y, 0),
+        (7, 6, 3, 2, TreeAxis::Y, 0),
+        (1, 0, 3, 2, TreeAxis::Z, 0),
+        (5, 4, 7, 6, TreeAxis::Z, 0),
+    ],
+    // TreeAxis::Y
+    [
+        (2, 3, 0, 1, TreeAxis::Z, 1),
+        (6, 7, 4, 5, TreeAxis::Z, 1),
+        (3, 7, 1, 5, TreeAxis::X, 1),
+        (2, 6, 0, 4, TreeAxis::X, 1),
+    ],
+    // TreeAxis::Z
+    [
+        (0, 1, 4, 5, TreeAxis::Y, 2),
+        (2, 3, 6, 7, TreeAxis::Y, 2),
+        (5, 1, 7, 3, TreeAxis::X, 0),
+        (4, 0, 6, 2, TreeAxis::X, 0),
+    ],
+];
+
+static EDGE_EDGE_MAP: [[[usize; 4]; 2]; 3] = [
+    // TreeAxis::X
+    [[7, 3, 5, 1], [6, 2, 4, 0]],
+    // TreeAxis::Y
+    [[1, 0, 5, 4], [3, 2, 7, 6]],
+    // TreeAxis::Z
+    [[3, 2, 1, 0], [7, 6, 5, 4]],
+];
+
+static FACE_FACE_MAP: [[(usize, usize); 4]; 3] = [
+    // TreeAxis::X
+    [(5, 4), (7, 6), (1, 0), (3, 2)],
+    // TreeAxis::Y
+    [(7, 5), (6, 4), (3, 1), (2, 0)],
+    // TreeAxis::Z
+    [(5, 1), (4, 0), (7, 3), (6, 2)],
+];
+
+/// Entry point to the dual contour face extraction
+pub fn cell_proc(tree: &Octree, idx: OctantIdx) -> Vec<Face> {
+    if tree.get_octant(idx).is_leaf() {
+        return vec![];
+    }
+
+    let mut faces = vec![];
+    // Since it has children, spawn 8 calls to cell_proc
+    for child_idx in &tree.get_octant(idx).children.unwrap() {
+        faces.extend(cell_proc(&tree, *child_idx));
+    }
+    let children = tree.get_octant(idx).children.unwrap();
+
+    // call face_proc on every set of two cells that share a face
+    for (c0, c1, dir) in &CELL_FACE_MAP {
+        faces.extend(face_proc(&tree, *dir, [children[*c0], children[*c1]]));
+    }
+
+    // call edge_proc on every set of four subcells that share an edge
+    for (c0, c1, c2, c3, dir) in &CELL_EDGE_MAP {
+        faces.extend(edge_proc(
+            &tree,
+            *dir,
+            [children[*c0], children[*c1], children[*c2], children[*c3]],
+        ));
+    }
+
+    faces
+}
+
+/// Recursive function that extracts faces from two octants sharing a common face.
+///
+/// Calls itself 4 times with every pair of cells in direction `dir` that share a face.
+fn face_proc(tree: &Octree, dir: TreeAxis, cells: [OctantIdx; 2]) -> Vec<Face> {
+    let mut faces = vec![];
+    if tree.get_octant(cells[0]).children.is_some() || tree.get_octant(cells[1]).children.is_some()
+    {
+        for (c0, c1) in FACE_FACE_MAP[dir as usize].iter() {
+            let o0 = match tree.get_octant(cells[0]).children {
+                Some(children) => children[*c0],
+                None => cells[0],
+            };
+            let o1 = match tree.get_octant(cells[1]).children {
+                Some(children) => children[*c1],
+                None => cells[1],
+            };
+            faces.extend(face_proc(&tree, dir, [o0, o1]));
+        }
+
+        for (c0, c1, c2, c3, edge_dir, order) in FACE_EDGE_MAP[dir as usize].iter() {
+            let o0 = match tree.get_octant(cells[CELL_MAP[*order][0]]).children {
+                Some(child) => child[*c0],
+                None => cells[CELL_MAP[*order][0]],
+            };
+            let o1 = match tree.get_octant(cells[CELL_MAP[*order][1]]).children {
+                Some(child) => child[*c1],
+                None => cells[CELL_MAP[*order][1]],
+            };
+            let o2 = match tree.get_octant(cells[CELL_MAP[*order][2]]).children {
+                Some(child) => child[*c2],
+                None => cells[CELL_MAP[*order][2]],
+            };
+            let o3 = match tree.get_octant(cells[CELL_MAP[*order][3]]).children {
+                Some(child) => child[*c3],
+                None => cells[CELL_MAP[*order][3]],
+            };
+
+            faces.extend(edge_proc(&tree, *edge_dir, [o0, o1, o2, o3]));
+        }
+    }
+
+    faces
+}
+
+/// Recursive function that extracts faces from four edge-adjacent octants.
+///
+/// Calls itself twice in the direction `dir` for all four sub-cells
+/// that share a half-edge contained in the edge.
+fn edge_proc(tree: &Octree, dir: TreeAxis, cells: [OctantIdx; 4]) -> Vec<Face> {
+    let mut faces = vec![];
+    match (
+        tree.get_octant(cells[0]).children,
+        tree.get_octant(cells[1]).children,
+        tree.get_octant(cells[2]).children,
+        tree.get_octant(cells[3]).children,
+    ) {
+        (None, None, None, None) => {
+            if let Some(face) = make_face(&tree, dir, cells) {
+                faces.push(face);
+            }
+        }
+        (o0, o1, o2, o3) => {
+            for [idx0, idx1, idx2, idx3] in &EDGE_EDGE_MAP[dir as usize] {
+                let c0 = match o0 {
+                    Some(o0) => o0[*idx0],
+                    None => cells[0],
+                };
+                let c1 = match o1 {
+                    Some(o1) => o1[*idx1],
+                    None => cells[1],
+                };
+                let c2 = match o2 {
+                    Some(o2) => o2[*idx2],
+                    None => cells[2],
+                };
+                let c3 = match o3 {
+                    Some(o3) => o3[*idx3],
+                    None => cells[3],
+                };
+                faces.extend(edge_proc(&tree, dir, [c0, c1, c2, c3]));
+            }
+        }
+        _ => (),
+    }
+    faces
+}
+
+/// Creates a face of the polygon if all leaf cells have a feature.
+fn make_face(tree: &Octree, dir: TreeAxis, cells: [OctantIdx; 4]) -> Option<Face> {
+    // Cells can have duplicated
+    let mut dedup_cells = vec![];
+    for x in &cells {
+        if dedup_cells.contains(x) {
+            continue;
+        } else {
+            dedup_cells.push(*x);
+        }
+    }
+    let dedup_feature_cells: Vec<Point> =
+        dedup_cells.iter().filter_map(|c| tree.get_octant(*c).feature).collect();
+
+    // If there aren't three points, a face cannot be constructed
+    if dedup_feature_cells.len() < 3 {
+        return None;
+    }
+
+    if dedup_cells.len() == 4 && dedup_feature_cells.len() == 4 {
+        Some(Face::Plane {
+            ul: dedup_feature_cells[0],
+            ur: dedup_feature_cells[1],
+            ll: dedup_feature_cells[2],
+            lr: dedup_feature_cells[3],
+        })
+    } else if dedup_cells.len() == 3 && dedup_feature_cells.len() == 3 {
+        Some(Face::Triangle {
+            ul: dedup_feature_cells[0],
+            lr: dedup_feature_cells[1],
+            ll: dedup_feature_cells[2],
+        })
     } else {
         None
     }
