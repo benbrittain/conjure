@@ -49,7 +49,7 @@ fn hsl_to_rgb(h: f32, s: f32, l: f32) -> [u8; 3] {
 pub fn color_from_point(point: &Point) -> [f32; 3] {
     // Hash the x/y/z so we get something consistent but unique
     let mut hasher = DefaultHasher::new();
-    for i in [point.x, point.y, point.z] {
+    for i in [point.x * 1000.0, point.y * 1000.0, point.z * 1000.0] {
         hasher.write_i32(i as i32);
     }
     let hash = hasher.finish();
