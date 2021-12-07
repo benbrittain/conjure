@@ -1,5 +1,5 @@
 use {
-    crate::{model::ModelVertex, types::Face},
+    crate::{model::ModelVertex, types::Face, util},
     wgpu::util::DeviceExt,
 };
 
@@ -16,29 +16,23 @@ impl FaceMesh {
         let mut indices = Vec::new();
 
         for face in faces {
-            use rand::Rng;
-            let mut rng = rand::thread_rng();
-            let r: f32 = rng.gen_range(0.0..1.0);
-            let g: f32 = rng.gen_range(0.0..1.0);
-            let b: f32 = rng.gen_range(0.0..1.0);
-            let color = [r as f32, g as f32, b as f32];
             match face {
                 Face::Triangle { ul, lr, ll } => {
                     vertices.push(ModelVertex {
                         position: [ul.x as f32, ul.y as f32, ul.z as f32],
-                        color,
+                        color: util::color_from_point(&ul),
                     });
                     indices.push(indices.last().map(|&x| x + 1).unwrap_or(0));
 
                     vertices.push(ModelVertex {
                         position: [lr.x as f32, lr.y as f32, lr.z as f32],
-                        color,
+                        color: util::color_from_point(&lr),
                     });
                     indices.push(indices.last().map(|&x| x + 1).unwrap_or(0));
 
                     vertices.push(ModelVertex {
                         position: [ll.x as f32, ll.y as f32, ll.z as f32],
-                        color,
+                        color: util::color_from_point(&ll),
                     });
                     indices.push(indices.last().map(|&x| x + 1).unwrap_or(0));
                 }
@@ -46,19 +40,19 @@ impl FaceMesh {
                     for tri in [(ul, ur, lr), (lr, ll, ul)].iter() {
                         vertices.push(ModelVertex {
                             position: [tri.0.x as f32, tri.0.y as f32, tri.0.z as f32],
-                            color,
+                            color: util::color_from_point(&tri.0),
                         });
                         indices.push(indices.last().map(|&x| x + 1).unwrap_or(0));
 
                         vertices.push(ModelVertex {
                             position: [tri.1.x as f32, tri.1.y as f32, tri.1.z as f32],
-                            color,
+                            color: util::color_from_point(&tri.1),
                         });
                         indices.push(indices.last().map(|&x| x + 1).unwrap_or(0));
 
                         vertices.push(ModelVertex {
                             position: [tri.2.x as f32, tri.2.y as f32, tri.2.z as f32],
-                            color,
+                            color: util::color_from_point(&tri.2),
                         });
                         indices.push(indices.last().map(|&x| x + 1).unwrap_or(0));
                     }
