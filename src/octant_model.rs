@@ -65,7 +65,7 @@ impl OctantMesh {
                 for edge in
                     &[(face.0, face.1), (face.0, face.2), (face.2, face.3), (face.1, face.3)]
                 {
-                    let size = 0.005;
+                    let size = 0.01;
                     let ulf = [edge.0[0] - size, edge.0[1] - size, edge.0[2] - size];
                     let lrr = [edge.1[0] + size, edge.1[1] + size, edge.1[2] + size];
 
