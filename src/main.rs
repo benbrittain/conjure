@@ -11,6 +11,7 @@ use {
 mod camera;
 mod dual_contour;
 mod event_loop;
+mod faces_model;
 mod model;
 mod octant_model;
 mod octree;

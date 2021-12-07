@@ -1,12 +1,13 @@
 use {
     crate::{
         camera::{self, CameraUniform},
+        faces_model::{DrawFaces, FaceMesh},
         model::{self, Vertex},
         octant_model::{DrawOctant, OctantMesh},
         octree::Octant,
         points_model::{DrawPoints, PointMesh},
         texture,
-        types::Point,
+        types::{Face, Point},
     },
     log::warn,
     wgpu::util::DeviceExt,
@@ -39,6 +40,9 @@ pub struct RenderState {
 
     render_points: bool,
     points: Option<PointMesh>,
+
+    render_faces: bool,
+    faces: Option<FaceMesh>,
 }
 
 impl RenderState {
@@ -197,11 +201,18 @@ impl RenderState {
 
             render_points: true,
             points: None,
+
+            render_faces: false,
+            faces: None,
         }
     }
 
     pub fn set_octree_model(&mut self, octants: Vec<Octant>) {
         self.octants = Some(OctantMesh::new(&self.device, &self.queue, &octants));
+    }
+
+    pub fn set_faces_model(&mut self, faces: Vec<Face>) {
+        self.faces = Some(FaceMesh::new(&self.device, &self.queue, &faces));
     }
 
     pub fn set_points_model(&mut self, points: Vec<Point>) {
@@ -249,6 +260,9 @@ impl RenderState {
                 }
                 if *key == VirtualKeyCode::P && *state == ElementState::Pressed {
                     self.render_points = !self.render_points;
+                }
+                if *key == VirtualKeyCode::F && *state == ElementState::Pressed {
+                    self.render_faces = !self.render_faces;
                 }
                 self.camera_controller.process_keyboard(*key, *state)
             }
@@ -301,6 +315,12 @@ impl RenderState {
             if let Some(points) = &self.points {
                 if self.render_points {
                     render_pass.draw_points(points);
+                }
+            }
+
+            if let Some(faces) = &self.faces {
+                if self.render_faces {
+                    render_pass.draw_faces(faces);
                 }
             }
         }

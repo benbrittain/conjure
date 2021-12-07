@@ -51,6 +51,7 @@ pub struct Octant {
     pub feature: Option<Point>,
 }
 
+#[allow(dead_code)]
 impl Octant {
     /// Creates a new leaf node octant.
     fn new(x_axis: OctAxis, y_axis: OctAxis, z_axis: OctAxis, feature: Option<Point>) -> Octant {

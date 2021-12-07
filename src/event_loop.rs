@@ -23,6 +23,7 @@ pub fn start(octree: &mut Octree) -> Result<(), Error> {
     let mut render_state = executor::block_on(RenderState::new(&window));
     let mut last_render_time = std::time::Instant::now();
 
+    render_state.set_faces_model(octree.extract_faces());
     render_state.set_octree_model(octants);
     render_state.set_points_model(points);
 

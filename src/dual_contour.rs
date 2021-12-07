@@ -335,7 +335,7 @@ fn edge_proc(tree: &Octree, dir: TreeAxis, cells: [OctantIdx; 4]) -> Vec<Face> {
         tree.get_octant(cells[3]).children,
     ) {
         (None, None, None, None) => {
-            if let Some(face) = make_face(&tree, dir, cells) {
+            if let Some(face) = make_face(&tree, cells) {
                 faces.push(face);
             }
         }
@@ -360,13 +360,12 @@ fn edge_proc(tree: &Octree, dir: TreeAxis, cells: [OctantIdx; 4]) -> Vec<Face> {
                 faces.extend(edge_proc(&tree, dir, [c0, c1, c2, c3]));
             }
         }
-        _ => (),
     }
     faces
 }
 
 /// Creates a face of the polygon if all leaf cells have a feature.
-fn make_face(tree: &Octree, dir: TreeAxis, cells: [OctantIdx; 4]) -> Option<Face> {
+fn make_face(tree: &Octree, cells: [OctantIdx; 4]) -> Option<Face> {
     // Cells can have duplicated
     let mut dedup_cells = vec![];
     for x in &cells {
