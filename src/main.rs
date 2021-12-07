@@ -14,10 +14,12 @@ mod event_loop;
 mod model;
 mod octant_model;
 mod octree;
+mod points_model;
 mod render_state;
 mod shape;
 mod texture;
 mod types;
+mod util;
 
 #[derive(FromArgs)]
 /// Conjure shapes.
@@ -40,7 +42,7 @@ fn main() -> Result<(), Error> {
     let mut tree = Octree::new(-16.0, 16.0);
 
     tree.render_shape(
-        1.0,
+        2.0,
         ShapeFunc::new(move |x, y, z| {
             (((0.0 - z) * (0.0 - z)) + ((0.0 - x) * (0.0 - x)) + ((0.0 - y) * (0.0 - y))).sqrt()
                 - 5.0

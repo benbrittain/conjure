@@ -4,7 +4,9 @@ use {
         model::{self, Vertex},
         octant_model::{DrawOctant, OctantMesh},
         octree::Octant,
+        points_model::{DrawPoints, PointMesh},
         texture,
+        types::Point,
     },
     log::warn,
     wgpu::util::DeviceExt,
@@ -34,6 +36,9 @@ pub struct RenderState {
 
     render_octants: bool,
     octants: Option<OctantMesh>,
+
+    render_points: bool,
+    points: Option<PointMesh>,
 }
 
 impl RenderState {
@@ -189,11 +194,18 @@ impl RenderState {
             // Octree octants
             render_octants: false,
             octants: None,
+
+            render_points: true,
+            points: None,
         }
     }
 
     pub fn set_octree_model(&mut self, octants: Vec<Octant>) {
         self.octants = Some(OctantMesh::new(&self.device, &self.queue, &octants));
+    }
+
+    pub fn set_points_model(&mut self, points: Vec<Point>) {
+        self.points = Some(PointMesh::new(&self.device, &self.queue, &points));
     }
 
     pub fn update(&mut self, lrt: std::time::Duration) {
@@ -280,6 +292,12 @@ impl RenderState {
             if let Some(octants) = &self.octants {
                 if self.render_octants {
                     render_pass.draw_octants(octants);
+                }
+            }
+
+            if let Some(points) = &self.points {
+                if self.render_points {
+                    render_pass.draw_points(points);
                 }
             }
         }

@@ -43,7 +43,7 @@ pub struct Octant {
     pub y_axis: OctAxis,
     pub z_axis: OctAxis,
     pub children: Option<[OctantIdx; 8]>,
-    feature: Option<Point>,
+    pub feature: Option<Point>,
 }
 
 impl Octant {
