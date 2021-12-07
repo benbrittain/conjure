@@ -247,6 +247,9 @@ impl RenderState {
                 if *key == VirtualKeyCode::O && *state == ElementState::Pressed {
                     self.render_octants = !self.render_octants;
                 }
+                if *key == VirtualKeyCode::P && *state == ElementState::Pressed {
+                    self.render_points = !self.render_points;
+                }
                 self.camera_controller.process_keyboard(*key, *state)
             }
             WindowEvent::MouseWheel { delta, .. } => self.camera_controller.process_scroll(delta),
