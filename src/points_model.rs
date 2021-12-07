@@ -35,20 +35,23 @@ impl PointMesh {
 
             // Draw a 6 sided diamond
             for face in &[
-                (one, bottom_vertex, two),
-                (two, bottom_vertex, three),
-                (three, bottom_vertex, four),
-                (four, bottom_vertex, one),
-                (one, top_vertex, two),
-                (two, top_vertex, three),
-                (three, top_vertex, four),
-                (four, top_vertex, one),
+                (one, two, bottom_vertex),
+                (two, three, bottom_vertex),
+                (three, four, bottom_vertex),
+                (four, one, bottom_vertex),
+                (one, two, top_vertex),
+                (two, three, top_vertex),
+                (three, four, top_vertex),
+                (four, one, top_vertex),
             ] {
                 vertices.push(ModelVertex { position: face.0, color });
                 indices.push(indices.last().map(|&x| x + 1).unwrap_or(0));
+
                 vertices.push(ModelVertex { position: face.1, color });
                 indices.push(indices.last().map(|&x| x + 1).unwrap_or(0));
+
                 vertices.push(ModelVertex { position: face.2, color });
+                indices.push(indices.last().map(|&x| x + 1).unwrap_or(0));
             }
         }
 
