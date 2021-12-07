@@ -1,11 +1,14 @@
 use {
     crate::{
         camera::{self, CameraUniform},
-        faces_model::{DrawFaces, FaceMesh},
-        model::{self, Vertex},
-        octant_model::{DrawOctant, OctantMesh},
+        model::{
+            self,
+            faces::{DrawFaces, FaceMesh},
+            octants::{DrawOctant, OctantMesh},
+            points::{DrawPoints, PointMesh},
+            Vertex,
+        },
         octree::Octant,
-        points_model::{DrawPoints, PointMesh},
         texture,
         types::{Face, Point},
     },

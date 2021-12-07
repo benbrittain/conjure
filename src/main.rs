@@ -11,11 +11,8 @@ use {
 mod camera;
 mod dual_contour;
 mod event_loop;
-mod faces_model;
 mod model;
-mod octant_model;
 mod octree;
-mod points_model;
 mod render_state;
 mod shape;
 mod texture;
@@ -43,7 +40,7 @@ fn main() -> Result<(), Error> {
     let mut tree = Octree::new(-16.0, 16.0);
 
     tree.render_shape(
-        2.0,
+        1.0,
         ShapeFunc::new(move |x, y, z| {
             (((0.0 - z) * (0.0 - z)) + ((0.0 - x) * (0.0 - x)) + ((0.0 - y) * (0.0 - y))).sqrt()
                 - 5.0
