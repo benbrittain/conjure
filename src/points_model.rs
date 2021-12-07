@@ -15,8 +15,6 @@ impl PointMesh {
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
 
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
         for point in points {
             let x_center = point.x;
             let y_center = point.y;
@@ -27,8 +25,7 @@ impl PointMesh {
             let y_max = point.y + 0.08;
             let z_min = point.z - 0.05;
             let z_max = point.z + 0.05;
-            // light green
-            let color = [0.19, 0.8, 0.19];
+            let color = util::color_from_point(&point);
             let bottom_vertex = [x_center, y_center, z_min];
             let top_vertex = [x_center, y_center, z_max];
             let one = [x_max, y_center, z_center];
@@ -37,7 +34,6 @@ impl PointMesh {
             let four = [x_center, y_max, z_center];
 
             // Draw a 6 sided diamond
-            // looks like the Sims!
             for face in &[
                 (one, bottom_vertex, two),
                 (two, bottom_vertex, three),

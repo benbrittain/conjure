@@ -1,5 +1,5 @@
 use {
-    crate::{model::ModelVertex, octree::Octant},
+    crate::{model::ModelVertex, octree::Octant, util},
     wgpu::util::DeviceExt,
 };
 
@@ -15,16 +15,10 @@ impl OctantMesh {
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
 
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
         for octant in octants {
-            let color = if octant.has_feature() {
-                let r: f32 = rng.gen_range(0.0..0.8);
-                let g: f32 = rng.gen_range(0.0..0.8);
-                let b: f32 = rng.gen_range(0.0..0.8);
-                [r, g, b]
-            } else {
-                [0.9, 0.9, 0.9]
+            let color = match octant.feature {
+                Some(p) => util::color_from_point(&p),
+                None => [0.9, 0.9, 0.9],
             };
             let x_axis = octant.x_axis;
             let y_axis = octant.y_axis;
@@ -71,7 +65,7 @@ impl OctantMesh {
                 for edge in
                     &[(face.0, face.1), (face.0, face.2), (face.2, face.3), (face.1, face.3)]
                 {
-                    let size = 0.01;
+                    let size = 0.005;
                     let ulf = [edge.0[0] - size, edge.0[1] - size, edge.0[2] - size];
                     let lrr = [edge.1[0] + size, edge.1[1] + size, edge.1[2] + size];
 
