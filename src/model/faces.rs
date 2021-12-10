@@ -20,19 +20,19 @@ impl FaceMesh {
                 Face::Triangle { ul, lr, ll } => {
                     vertices.push(ModelVertex {
                         position: [ul.x as f32, ul.y as f32, ul.z as f32],
-                        color: util::color_from_point(&ul),
+                        color: util::color_from_point(ul),
                     });
                     indices.push(indices.last().map(|&x| x + 1).unwrap_or(0));
 
                     vertices.push(ModelVertex {
                         position: [lr.x as f32, lr.y as f32, lr.z as f32],
-                        color: util::color_from_point(&lr),
+                        color: util::color_from_point(lr),
                     });
                     indices.push(indices.last().map(|&x| x + 1).unwrap_or(0));
 
                     vertices.push(ModelVertex {
                         position: [ll.x as f32, ll.y as f32, ll.z as f32],
-                        color: util::color_from_point(&ll),
+                        color: util::color_from_point(ll),
                     });
                     indices.push(indices.last().map(|&x| x + 1).unwrap_or(0));
                 }
@@ -40,19 +40,19 @@ impl FaceMesh {
                     for tri in [(ul, ur, lr), (lr, ll, ul)].iter() {
                         vertices.push(ModelVertex {
                             position: [tri.0.x as f32, tri.0.y as f32, tri.0.z as f32],
-                            color: util::color_from_point(&tri.0),
+                            color: util::color_from_point(tri.0),
                         });
                         indices.push(indices.last().map(|&x| x + 1).unwrap_or(0));
 
                         vertices.push(ModelVertex {
                             position: [tri.1.x as f32, tri.1.y as f32, tri.1.z as f32],
-                            color: util::color_from_point(&tri.1),
+                            color: util::color_from_point(tri.1),
                         });
                         indices.push(indices.last().map(|&x| x + 1).unwrap_or(0));
 
                         vertices.push(ModelVertex {
                             position: [tri.2.x as f32, tri.2.y as f32, tri.2.z as f32],
-                            color: util::color_from_point(&tri.2),
+                            color: util::color_from_point(tri.2),
                         });
                         indices.push(indices.last().map(|&x| x + 1).unwrap_or(0));
                     }

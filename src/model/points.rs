@@ -25,7 +25,7 @@ impl PointMesh {
             let y_max = point.y + 0.10;
             let z_min = point.z - 0.07;
             let z_max = point.z + 0.07;
-            let color = util::color_from_point(&point);
+            let color = util::color_from_point(point);
             let bottom_vertex = [x_center, y_center, z_min];
             let top_vertex = [x_center, y_center, z_max];
             let one = [x_max, y_center, z_center];

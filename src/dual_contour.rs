@@ -206,7 +206,9 @@ static CELL_EDGE_MAP: [(usize, usize, usize, usize, TreeAxis); 6] = [
 ];
 
 static CELL_MAP: [[usize; 4]; 3] = [[0, 1, 0, 1], [0, 0, 1, 1], [1, 1, 0, 0]];
-static FACE_EDGE_MAP: [[(usize, usize, usize, usize, TreeAxis, usize); 4]; 3] = [
+
+type FaceInternal = (usize, usize, usize, usize, TreeAxis, usize);
+static FACE_EDGE_MAP: [[FaceInternal; 4]; 3] = [
     // TreeAxis::X
     [
         (5, 4, 1, 0, TreeAxis::Y, 0),
@@ -257,19 +259,19 @@ pub fn cell_proc(tree: &Octree, idx: OctantIdx) -> Vec<Face> {
     let mut faces = vec![];
     // Since it has children, spawn 8 calls to cell_proc
     for child_idx in &tree.get_octant(idx).children.unwrap() {
-        faces.extend(cell_proc(&tree, *child_idx));
+        faces.extend(cell_proc(tree, *child_idx));
     }
     let children = tree.get_octant(idx).children.unwrap();
 
     // call face_proc on every set of two cells that share a face
     for (c0, c1, dir) in &CELL_FACE_MAP {
-        faces.extend(face_proc(&tree, *dir, [children[*c0], children[*c1]]));
+        faces.extend(face_proc(tree, *dir, [children[*c0], children[*c1]]));
     }
 
     // call edge_proc on every set of four subcells that share an edge
     for (c0, c1, c2, c3, dir) in &CELL_EDGE_MAP {
         faces.extend(edge_proc(
-            &tree,
+            tree,
             *dir,
             [children[*c0], children[*c1], children[*c2], children[*c3]],
         ));
@@ -294,7 +296,7 @@ fn face_proc(tree: &Octree, dir: TreeAxis, cells: [OctantIdx; 2]) -> Vec<Face> {
                 Some(children) => children[*c1],
                 None => cells[1],
             };
-            faces.extend(face_proc(&tree, dir, [o0, o1]));
+            faces.extend(face_proc(tree, dir, [o0, o1]));
         }
 
         for (c0, c1, c2, c3, edge_dir, order) in FACE_EDGE_MAP[dir as usize].iter() {
@@ -315,7 +317,7 @@ fn face_proc(tree: &Octree, dir: TreeAxis, cells: [OctantIdx; 2]) -> Vec<Face> {
                 None => cells[CELL_MAP[*order][3]],
             };
 
-            faces.extend(edge_proc(&tree, *edge_dir, [o0, o1, o2, o3]));
+            faces.extend(edge_proc(tree, *edge_dir, [o0, o1, o2, o3]));
         }
     }
 
@@ -335,7 +337,7 @@ fn edge_proc(tree: &Octree, dir: TreeAxis, cells: [OctantIdx; 4]) -> Vec<Face> {
         tree.get_octant(cells[3]).children,
     ) {
         (None, None, None, None) => {
-            if let Some(face) = make_face(&tree, cells) {
+            if let Some(face) = make_face(tree, cells) {
                 faces.push(face);
             }
         }
@@ -357,7 +359,7 @@ fn edge_proc(tree: &Octree, dir: TreeAxis, cells: [OctantIdx; 4]) -> Vec<Face> {
                     Some(o3) => o3[*idx3],
                     None => cells[3],
                 };
-                faces.extend(edge_proc(&tree, dir, [c0, c1, c2, c3]));
+                faces.extend(edge_proc(tree, dir, [c0, c1, c2, c3]));
             }
         }
     }

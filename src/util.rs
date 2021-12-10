@@ -26,7 +26,7 @@ fn hue_to_rgb(p: f32, q: f32, mut t: f32) -> f32 {
 }
 
 fn hsl_to_rgb(h: f32, s: f32, l: f32) -> [u8; 3] {
-    assert!(h <= 360.0 && h >= 0.0);
+    assert!((0.0..=360.0).contains(&h));
     if s == 0.0 {
         let l = (l * 255.0).round() as u8;
         return [l, l, l];
