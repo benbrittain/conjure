@@ -302,6 +302,7 @@ dependencies = [
  "log",
  "nalgebra",
  "rand",
+ "regex",
  "thiserror",
  "wgpu",
  "winit",
