@@ -202,10 +202,10 @@ impl RenderState {
             render_octants: false,
             octants: None,
 
-            render_points: true,
+            render_points: false,
             points: None,
 
-            render_faces: false,
+            render_faces: true,
             faces: None,
         }
     }
