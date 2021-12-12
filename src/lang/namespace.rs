@@ -68,6 +68,21 @@ impl Namespace {
         );
 
         hm.insert(
+            String::from("intersect"),
+            Ty::Function(|list| match list {
+                [Ty::CsgFunc(fn1), Ty::CsgFunc(fn2)] => {
+                    let fn1 = fn1.clone();
+                    let fn2 = fn2.clone();
+                    let func = CsgFunc::new(Box::new(move |x, y, z| {
+                        f32::max(fn1.call(x, y, z), fn2.call(x, y, z))
+                    }));
+                    Ok(Ty::CsgFunc(func))
+                }
+                _ => Err(Error::UnknownTypeCheck),
+            }),
+        );
+
+        hm.insert(
             String::from("cube"),
             Ty::Function(|list| match list {
                 [Ty::Vector(ll), Ty::Vector(ur)] => {

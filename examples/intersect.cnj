@@ -1,0 +1,4 @@
+(intersect
+  (sphere 4)
+  (cube [-3 -3 -3] [3 3 3])
+)
