@@ -15,3 +15,4 @@ Rough prototype at the moment.
   (cube [-3 -3 -3] [3 3 3])
 )
 ```
+![rendering of union](examples/union.png)
