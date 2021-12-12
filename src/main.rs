@@ -25,6 +25,15 @@ struct Arguments {
     /// input file
     #[argh(positional)]
     input: PathBuf,
+
+    /// resolution of the rendered model
+    #[argh(option)]
+    resolution: f32,
+
+    /// size of the space the model is rendered into
+    /// (-bound .. bound)
+    #[argh(option)]
+    bound: f32,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -45,10 +54,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ast = lang::eval(tokens, &env)?;
 
     // Contour the output CSG function
-    let mut tree = Octree::new(-16.0, 16.0);
+    let mut tree = Octree::new(-args.bound, args.bound);
 
     if let crate::lang::Ty::CsgFunc(csg_func) = ast {
-        tree.render_shape(0.5, csg_func);
+        tree.render_shape(args.resolution, csg_func);
     }
 
     // Render the shape
