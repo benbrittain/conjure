@@ -3,9 +3,15 @@
 
 Conjure is a 3D Constructive Solid Geometry (CSG) language.
 
-Rough prototype at the moment, nothing usable yet.
+Rough prototype at the moment.
 
-### Conjure Lang
+### Example Conjure Lang
+
 ```
-(circle [0 0 0] 10)
+(union
+  ; centered on origin
+  (sphere 4)
+  ; lower left point & upper right point
+  (cube [-3 -3 -3] [3 3 3])
+)
 ```
