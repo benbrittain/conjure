@@ -2,7 +2,7 @@ use {
     crate::{
         octree::{OctAxis, OctantIdx, Octree},
         types::{Face, Point},
-        ShapeFunc,
+        CsgFunc,
     },
     nalgebra::{linalg::SVD, MatrixXx1, MatrixXx3, RowVector1, RowVector3, Vector3},
 };
@@ -37,7 +37,7 @@ use {
 /// Locate where the isosurface intersects the line between `p1` and `p2`.
 ///
 /// To effectivly use this, one axis of the cube should be held constant
-fn find_point_on_edge(p1: Point, p2: Point, func: ShapeFunc) -> Option<Point> {
+fn find_point_on_edge(p1: Point, p2: Point, func: CsgFunc) -> Option<Point> {
     if func.call_point(p1) > func.call_point(p2) {
         // if p1 is bigger than 0, swap the direction of the points
         return find_point_on_edge(p2, p1, func);
@@ -81,7 +81,7 @@ pub fn new_feature(
     x_axis: OctAxis,
     y_axis: OctAxis,
     z_axis: OctAxis,
-    shape_func: ShapeFunc,
+    shape_func: CsgFunc,
 ) -> Option<Point> {
     let mut points: Vec<Point> = vec![];
 

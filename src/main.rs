@@ -2,7 +2,6 @@
 
 use {
     crate::{octree::Octree, shape::ShapeFunc},
-    anyhow::{anyhow, Error},
     argh::FromArgs,
     log::info,
     std::path::PathBuf,
@@ -28,7 +27,7 @@ struct Arguments {
     input: Option<PathBuf>,
 }
 
-fn main() -> Result<(), Error> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
     info!("starting up");

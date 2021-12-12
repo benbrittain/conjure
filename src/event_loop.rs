@@ -4,7 +4,6 @@ use {
         render_state::RenderState,
         types::Point,
     },
-    anyhow::Error,
     futures::executor,
     log::{error, warn},
     winit::{
@@ -14,7 +13,7 @@ use {
     },
 };
 
-pub fn start(octree: &mut Octree) -> Result<(), Error> {
+pub fn start(octree: &mut Octree) -> Result<(), Box<dyn std::error::Error>> {
     let octants: Vec<Octant> = octree.clone().into_iter().collect();
     let points: Vec<Point> = octree.clone().into_iter().filter_map(|o| o.feature).collect();
 
