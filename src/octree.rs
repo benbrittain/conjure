@@ -1,7 +1,7 @@
 use {
     crate::{
         dual_contour,
-        shape::ShapeFunc,
+        shape::CsgFunc,
         types::{Face, Point},
     },
     log::{info, warn},
@@ -10,7 +10,7 @@ use {
 /// Index into the Octree for a unique `Octant`
 pub type OctantIdx = usize;
 
-/// Handle to an object (created from a `ShapeFunc`) in the Octree.
+/// Handle to an object (created from a `CsgFunc`) in the Octree.
 pub type ShapeHandle = usize;
 
 /// Axis (range) of the Octree
@@ -94,7 +94,7 @@ impl Octree {
     }
 
     /// Adds an object to the Octree rendered from the `function` at a resolution of `resolution`
-    pub fn render_shape(&mut self, resolution: f32, function: ShapeFunc) -> ShapeHandle {
+    pub fn render_shape(&mut self, resolution: f32, function: CsgFunc) -> ShapeHandle {
         let depth = (self.range.length() / resolution).log2() as u8;
         info!("Rendering a shape at a resolution of {} (depth: {})", resolution, depth);
         self.subdivide(self.range, self.range, self.range, depth, function);
@@ -150,7 +150,7 @@ impl Octree {
         y_axis: OctAxis,
         z_axis: OctAxis,
         depth: u8,
-        shape_func: ShapeFunc,
+        shape_func: CsgFunc,
     ) -> Subdivided {
         if depth == 0 {
             // We're at the bottom of the octree, generate a leaf node Octant
@@ -179,7 +179,7 @@ impl Octree {
         ];
 
         let octant_children =
-            subdivides.map(|[x, y, z]| self.subdivide(x, y, z, new_depth, shape_func));
+            subdivides.map(|[x, y, z]| self.subdivide(x, y, z, new_depth, shape_func.clone()));
 
         // Merge octants if possible
         if let Some(merged_region) = Self::merge_octants(octant_children) {
@@ -195,7 +195,7 @@ impl Octree {
             octant_children.zip(subdivides).map(|(child, [x, y, z])| match child {
                 Subdivided::Idx(idx) => idx,
                 Subdivided::Value(_) => {
-                    let feature = dual_contour::new_feature(x, y, z, shape_func);
+                    let feature = dual_contour::new_feature(x, y, z, shape_func.clone());
                     self.add_octant(Octant::new(x, y, z, feature))
                 }
             });

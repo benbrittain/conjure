@@ -1,5 +1,6 @@
 use {
     super::error::Error,
+    crate::shape::CsgFunc,
     std::{collections::HashMap, fmt},
 };
 
@@ -21,6 +22,7 @@ pub enum Ty {
     Keyword(String),
     HashMap(HashMap<KeyTy, Ty>),
     Function(fn(&[Ty]) -> Result<Ty, Error>),
+    CsgFunc(CsgFunc),
 }
 
 impl std::fmt::Debug for Ty {
@@ -35,6 +37,7 @@ impl std::fmt::Debug for Ty {
             Ty::False => f.debug_struct("False").finish(),
             Ty::True => f.debug_struct("True").finish(),
             Ty::Function(_) => f.debug_struct("<function>").finish(),
+            Ty::CsgFunc(_) => f.debug_struct("<csg>").finish(),
             _ => panic!("DEBUG not implemented"),
         }
     }

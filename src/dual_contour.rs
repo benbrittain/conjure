@@ -114,7 +114,7 @@ pub fn new_feature(
         if let Some(p) = find_point_on_edge(
             Point::new(edge.0 .0, edge.0 .1, edge.0 .2),
             Point::new(edge.1 .0, edge.1 .1, edge.1 .2),
-            shape_func,
+            shape_func.clone(),
         ) {
             points.push(p);
         }

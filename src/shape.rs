@@ -1,16 +1,13 @@
-use {crate::types::Point, nalgebra::Vector3};
+use {crate::types::Point, nalgebra::Vector3, std::sync::Arc};
 
-#[derive(Copy, Clone)]
-pub struct ShapeFunc {
-    func: fn(f32, f32, f32) -> f32,
+#[derive(Clone)]
+pub struct CsgFunc {
+    func: Arc<Box<dyn Fn(f32, f32, f32) -> f32>>,
 }
 
-impl ShapeFunc {
-    pub fn new(func: fn(f32, f32, f32) -> f32) -> Self {
-        ShapeFunc {
-            func,
-            // TODO normalized function
-        }
+impl CsgFunc {
+    pub fn new(func: Box<(dyn Fn(f32, f32, f32) -> f32 + Send + Sync)>) -> Self {
+        CsgFunc { func: Arc::new(func) }
     }
 
     pub fn call(&self, x: f32, y: f32, z: f32) -> f32 {
@@ -22,16 +19,10 @@ impl ShapeFunc {
     }
 
     pub fn normal(&self, x: f32, y: f32, z: f32) -> Vector3<f32> {
-        (normal(self.func))(x, y, z)
-    }
-}
-
-fn normal(func: fn(f32, f32, f32) -> f32) -> (impl Fn(f32, f32, f32) -> Vector3<f32> + Copy) {
-    move |x, y, z| {
         Vector3::new(
-            func(x + 0.001, y, z) - func(x - 0.001, y, z),
-            func(x, y + 0.001, z) - func(x, y - 0.001, z),
-            func(x, y, z + 0.001) - func(x, y, z - 0.001),
+            self.call(x + 0.001, y, z) - self.call(x - 0.001, y, z),
+            self.call(x, y + 0.001, z) - self.call(x, y - 0.001, z),
+            self.call(x, y, z + 0.001) - self.call(x, y, z - 0.001),
         )
         .normalize()
     }
