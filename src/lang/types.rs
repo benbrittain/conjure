@@ -20,6 +20,7 @@ pub enum Ty {
     Str(String),
     Keyword(String),
     HashMap(HashMap<KeyTy, Ty>),
+    Function(fn(&[Ty]) -> Result<Ty, Error>),
 }
 
 impl std::fmt::Debug for Ty {
@@ -33,6 +34,7 @@ impl std::fmt::Debug for Ty {
             Ty::Str(s) => f.debug_tuple("String").field(s).finish(),
             Ty::False => f.debug_struct("False").finish(),
             Ty::True => f.debug_struct("True").finish(),
+            Ty::Function(_) => f.debug_struct("<function>").finish(),
             _ => panic!("DEBUG not implemented"),
         }
     }

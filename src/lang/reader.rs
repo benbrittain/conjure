@@ -174,6 +174,7 @@ impl<'a> Reader<'a> {
             Ty::Number(n) => n.to_string(),
             Ty::Symbol(n) => n.to_string(),
             Ty::Keyword(s) => format!(":{}", s),
+            Ty::Function(_) => "<func>".to_string(),
             Ty::Str(n) => {
                 if pretty {
                     let mut accum = String::new();
