@@ -52,6 +52,59 @@ impl Namespace {
             }),
         );
 
+        hm.insert(
+            String::from("union"),
+            Ty::Function(|list| match list {
+                [Ty::CsgFunc(fn1), Ty::CsgFunc(fn2)] => {
+                    let fn1 = fn1.clone();
+                    let fn2 = fn2.clone();
+                    let func = CsgFunc::new(Box::new(move |x, y, z| {
+                        f32::min(fn1.call(x, y, z), fn2.call(x, y, z))
+                    }));
+                    Ok(Ty::CsgFunc(func))
+                }
+                _ => Err(Error::UnknownTypeCheck),
+            }),
+        );
+
+        hm.insert(
+            String::from("cube"),
+            Ty::Function(|list| match list {
+                [Ty::Vector(ll), Ty::Vector(ur)] => {
+                    let ll = ll.clone();
+                    let ur = ur.clone();
+                    let (ur_x, ur_y, ur_z) = match ur[..] {
+                        [Ty::Number(x), Ty::Number(y), Ty::Number(z)] => {
+                            (x as f32, y as f32, z as f32)
+                        }
+                        _ => return Err(Error::UnknownTypeCheck),
+                    };
+
+                    let (ll_x, ll_y, ll_z) = match ll[..] {
+                        [Ty::Number(x), Ty::Number(y), Ty::Number(z)] => {
+                            (x as f32, y as f32, z as f32)
+                        }
+                        _ => return Err(Error::UnknownTypeCheck),
+                    };
+
+                    let func = CsgFunc::new(Box::new(move |x, y, z| {
+                        f32::max(
+                            z - ur_z,
+                            f32::max(
+                                ll_z - z,
+                                f32::max(
+                                    ll_y - y,
+                                    f32::max(y - ur_y, f32::max(ll_x - x, x - ur_x)),
+                                ),
+                            ),
+                        )
+                    }));
+                    Ok(Ty::CsgFunc(func))
+                }
+                _ => Err(Error::UnknownTypeCheck),
+            }),
+        );
+
         Namespace(hm)
     }
 }
