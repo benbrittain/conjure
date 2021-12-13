@@ -98,7 +98,7 @@ impl<'a> Reader<'a> {
         let token = self.tokens[self.idx];
         self.idx += 1;
 
-        if let Ok(i) = token.parse::<i32>() {
+        if let Ok(i) = token.parse::<f32>() {
             return Ok(Ty::Number(i));
         }
 

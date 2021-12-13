@@ -12,7 +12,7 @@ impl Namespace {
 
         // addition
         ns.add_function("+", |list| {
-            let mut accum = 0;
+            let mut accum = 0.0;
             for num in list {
                 match num {
                     Ty::Number(n) => {
@@ -65,7 +65,7 @@ impl Namespace {
                 let func = CsgFunc::new(Box::new(move |x, y, z| {
                     (((0.0 - z) * (0.0 - z)) + ((0.0 - x) * (0.0 - x)) + ((0.0 - y) * (0.0 - y)))
                         .sqrt()
-                        - (radius as f32)
+                        - radius
                 }));
                 Ok(Ty::CsgFunc(func))
             }
@@ -78,12 +78,12 @@ impl Namespace {
                 let ll = ll.clone();
                 let ur = ur.clone();
                 let (ur_x, ur_y, ur_z) = match ur[..] {
-                    [Ty::Number(x), Ty::Number(y), Ty::Number(z)] => (x as f32, y as f32, z as f32),
+                    [Ty::Number(x), Ty::Number(y), Ty::Number(z)] => (x, y, z),
                     _ => return Err(Error::UnknownTypeCheck),
                 };
 
                 let (ll_x, ll_y, ll_z) = match ll[..] {
-                    [Ty::Number(x), Ty::Number(y), Ty::Number(z)] => (x as f32, y as f32, z as f32),
+                    [Ty::Number(x), Ty::Number(y), Ty::Number(z)] => (x, y, z),
                     _ => return Err(Error::UnknownTypeCheck),
                 };
 

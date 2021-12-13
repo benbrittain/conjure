@@ -14,7 +14,7 @@ pub enum KeyTy {
 pub enum Ty {
     List(Vec<Ty>),
     Vector(Vec<Ty>),
-    Number(i32),
+    Number(f32),
     True,
     False,
     Symbol(String),
