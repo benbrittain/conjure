@@ -10,8 +10,22 @@ fn eval_ast(ast: Ty, env: &Env) -> Result<Ty, Error> {
 
 pub fn eval(ast: Ty, env: &Env) -> Result<Ty, Error> {
     match ast {
-        Ty::List(ref _l) => {
-            // TODO eval special forms here
+        Ty::List(ref list) => {
+            // Evaluate special forms
+            if let Ty::Symbol(s) = &list[0] {
+                match s.as_str() {
+                    "let" => {
+                        return match &list[1] {
+                            Ty::Vector(_) => {
+                                let new_env = env.new_env(list[1].clone())?;
+                                eval(list[2].clone(), &new_env)
+                            }
+                            _ => Err(Error::InvalidLetBinding),
+                        }
+                    }
+                    _ => {}
+                };
+            }
 
             let evaled_ast = eval_ast(ast, env)?;
             match evaled_ast {

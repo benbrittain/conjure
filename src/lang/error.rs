@@ -16,4 +16,6 @@ pub enum Error {
     InvalidType(Ty),
     #[error("Unknown Typecheck Error")]
     UnknownTypeCheck,
+    #[error("Let Binding Error")]
+    InvalidLetBinding,
 }
