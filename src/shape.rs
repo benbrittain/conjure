@@ -4,12 +4,12 @@ type CsgTy = dyn Fn(f32, f32, f32) -> f32;
 
 #[derive(Clone)]
 pub struct CsgFunc {
-    func: Arc<Box<CsgTy>>,
+    func: Arc<CsgTy>,
 }
 
 impl CsgFunc {
     pub fn new(func: Box<CsgTy>) -> Self {
-        CsgFunc { func: Arc::new(func) }
+        CsgFunc { func: Arc::from(func) }
     }
 
     pub fn call(&self, x: f32, y: f32, z: f32) -> f32 {

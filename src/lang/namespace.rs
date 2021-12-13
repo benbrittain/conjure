@@ -61,7 +61,7 @@ impl Namespace {
         // csg sphere
         ns.add_function("sphere", |list| match list {
             [Ty::Number(n)] => {
-                let radius = n.clone();
+                let radius = *n;
                 let func = CsgFunc::new(Box::new(move |x, y, z| {
                     (((0.0 - z) * (0.0 - z)) + ((0.0 - x) * (0.0 - x)) + ((0.0 - y) * (0.0 - y)))
                         .sqrt()

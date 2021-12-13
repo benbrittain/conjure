@@ -19,7 +19,7 @@ impl<'a> Reader<'a> {
     /// Returns an error if the AST is not well formed
     pub fn read_str(string: &str) -> Result<Ty, Error> {
         // strip comment tokens
-        let tokens = tokenize(string).into_iter().filter(|t| !t.starts_with(";")).collect();
+        let tokens = tokenize(string).into_iter().filter(|t| !t.starts_with(';')).collect();
         let mut reader = Reader::new(tokens);
         reader.read_form()
     }
