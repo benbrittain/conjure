@@ -12,7 +12,7 @@ Rough prototype at the moment.
 
 ### Example Conjure Lang
 
-```
+```clojure
 (union
   ; centered on origin
   (sphere 4)
