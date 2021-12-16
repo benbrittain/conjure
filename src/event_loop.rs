@@ -6,6 +6,7 @@ use {
     },
     futures::executor,
     log::{error, warn},
+    std::sync::mpsc::Receiver,
     winit::{
         event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
         event_loop::{ControlFlow, EventLoop},
@@ -16,16 +17,11 @@ use {
 pub fn start(
     window: Window,
     event_loop: EventLoop<()>,
-    octree: &mut Octree,
+    ast_reciever: Receiver<crate::shape::CsgFunc>,
+    args: crate::Arguments,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut render_state = executor::block_on(RenderState::new(&window));
     let mut last_render_time = std::time::Instant::now();
-
-    let octants: Vec<Octant> = octree.clone().into_iter().collect();
-    let points: Vec<Point> = octree.clone().into_iter().filter_map(|o| o.feature).collect();
-    render_state.set_faces_model(octree.extract_faces());
-    render_state.set_octree_model(octants);
-    render_state.set_points_model(points);
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
@@ -86,7 +82,18 @@ pub fn start(
                 // Emitted after all RedrawRequested events
                 // do cleanup after rendering here if needed.
             }
-            Event::NewEvents(_) | Event::Suspended | Event::Resumed | Event::UserEvent(_) => {}
+            Event::NewEvents(_) | Event::Suspended | Event::Resumed => {}
+            Event::UserEvent(_) => {
+                let mut octree = Octree::new(-args.bound, args.bound);
+                let ast = ast_reciever.recv().unwrap();
+                octree.render_shape(args.resolution, ast);
+                let octants: Vec<Octant> = octree.clone().into_iter().collect();
+                let points: Vec<Point> =
+                    octree.clone().into_iter().filter_map(|o| o.feature).collect();
+                render_state.set_faces_model(octree.extract_faces());
+                render_state.set_octree_model(octants);
+                render_state.set_points_model(points);
+            }
             Event::WindowEvent { .. } => error!("bad window_id"),
             Event::LoopDestroyed => {}
         }

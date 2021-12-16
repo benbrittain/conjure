@@ -1,6 +1,6 @@
 use {crate::types::Point, nalgebra::Vector3, std::sync::Arc};
 
-type CsgTy = dyn Fn(f32, f32, f32) -> f32;
+type CsgTy = dyn Fn(f32, f32, f32) -> f32 + std::marker::Send + std::marker::Sync;
 
 #[derive(Clone)]
 pub struct CsgFunc {
