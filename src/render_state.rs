@@ -25,7 +25,6 @@ pub struct RenderState {
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
-    pub size: winit::dpi::PhysicalSize<u32>,
 
     render_pipeline: wgpu::RenderPipeline,
 
@@ -191,7 +190,6 @@ impl RenderState {
             device,
             queue,
             config,
-            size,
 
             render_pipeline,
 
@@ -243,7 +241,6 @@ impl RenderState {
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
             self.projection.resize(self.config.width, self.config.height);
-            self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
             self.depth_texture =
