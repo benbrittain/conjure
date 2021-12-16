@@ -9,19 +9,20 @@ use {
     winit::{
         event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
         event_loop::{ControlFlow, EventLoop},
-        window::WindowBuilder,
+        window::Window,
     },
 };
 
-pub fn start(octree: &mut Octree) -> Result<(), Box<dyn std::error::Error>> {
-    let octants: Vec<Octant> = octree.clone().into_iter().collect();
-    let points: Vec<Point> = octree.clone().into_iter().filter_map(|o| o.feature).collect();
-
-    let event_loop = EventLoop::new();
-    let window = WindowBuilder::new().with_title("conjure").build(&event_loop)?;
+pub fn start(
+    window: Window,
+    event_loop: EventLoop<()>,
+    octree: &mut Octree,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut render_state = executor::block_on(RenderState::new(&window));
     let mut last_render_time = std::time::Instant::now();
 
+    let octants: Vec<Octant> = octree.clone().into_iter().collect();
+    let points: Vec<Point> = octree.clone().into_iter().filter_map(|o| o.feature).collect();
     render_state.set_faces_model(octree.extract_faces());
     render_state.set_octree_model(octants);
     render_state.set_points_model(points);

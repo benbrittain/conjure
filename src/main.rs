@@ -5,6 +5,7 @@ use {
     argh::FromArgs,
     log::info,
     std::path::PathBuf,
+    winit::{event_loop::EventLoop, platform::unix::WindowBuilderExtUnix, window::WindowBuilder},
 };
 
 mod camera;
@@ -60,6 +61,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         tree.render_shape(args.resolution, csg_func);
     }
 
+    let event_loop = EventLoop::new();
+    let window = WindowBuilder::new()
+        .with_title("conjure")
+        .with_app_id("conjure".to_string())
+        .build(&event_loop)?;
+
     // Render the shape
-    event_loop::start(&mut tree)
+    event_loop::start(window, event_loop, &mut tree)
 }
