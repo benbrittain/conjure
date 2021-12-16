@@ -1,4 +1,11 @@
-use {log::warn, std::time::Duration, winit::event::*};
+use {
+    cgmath::{perspective, InnerSpace, Matrix4, Point3, Rad, SquareMatrix, Vector3},
+    std::{f32::consts::FRAC_PI_2, time::Duration},
+    winit::{
+        dpi::PhysicalPosition,
+        event::{ElementState, MouseScrollDelta, VirtualKeyCode},
+    },
+};
 
 #[rustfmt::skip]
 pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
@@ -8,151 +15,168 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
     0.0, 0.0, 0.5, 1.0,
 );
 
-#[repr(C)] // This is so we can store this in a buffer
-#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CameraUniform {
-    // We can't use cgmath with bytemuck directly so we'll have
-    // to convert the Matrix4 into a 4x4 f32 array
+    view_position: [f32; 4],
     view_proj: [[f32; 4]; 4],
 }
+
 impl CameraUniform {
     pub fn new() -> Self {
-        use cgmath::SquareMatrix;
-        Self { view_proj: cgmath::Matrix4::identity().into() }
+        Self { view_position: [0.0; 4], view_proj: Matrix4::identity().into() }
     }
-    pub fn update_view_proj(&mut self, camera: &mut Camera) {
-        self.view_proj = camera.build_view_projection_matrix().into();
+
+    pub fn update_view_proj(&mut self, camera: &Camera, projection: &Projection) {
+        self.view_position = camera.position.to_homogeneous().into();
+        self.view_proj = (projection.calc_matrix() * camera.calc_matrix()).into()
     }
 }
+
+#[derive(Debug)]
 pub struct Camera {
-    eye: cgmath::Point3<f32>,
-    target: cgmath::Point3<f32>,
-    up: cgmath::Vector3<f32>,
+    position: Point3<f32>,
+    yaw: Rad<f32>,
+    pitch: Rad<f32>,
+}
+
+impl Camera {
+    pub fn new<V: Into<Point3<f32>>, Y: Into<Rad<f32>>, P: Into<Rad<f32>>>(
+        position: V,
+        yaw: Y,
+        pitch: P,
+    ) -> Self {
+        Self { position: position.into(), yaw: yaw.into(), pitch: pitch.into() }
+    }
+
+    pub fn calc_matrix(&self) -> Matrix4<f32> {
+        let (sin_pitch, cos_pitch) = self.pitch.0.sin_cos();
+        let (sin_yaw, cos_yaw) = self.yaw.0.sin_cos();
+
+        Matrix4::look_to_rh(
+            self.position,
+            Vector3::new(cos_pitch * cos_yaw, sin_pitch, cos_pitch * sin_yaw).normalize(),
+            Vector3::unit_y(),
+        )
+    }
+}
+
+pub struct Projection {
     aspect: f32,
-    fovy: f32,
+    fovy: Rad<f32>,
     znear: f32,
     zfar: f32,
 }
 
-impl Camera {
-    pub fn new(_point: (f32, f32, f32), config: &wgpu::SurfaceConfiguration) -> Self {
-        Camera {
-            // position the camera one unit up and 2 units back
-            // +z is out of the screen
-            eye: (0.0, 1.0, 2.0).into(),    // have it look at the origin
-            target: (0.0, 0.0, 0.0).into(), // which way is "up"
-            up: cgmath::Vector3::unit_y(),
-            aspect: config.width as f32 / config.height as f32,
-            fovy: 45.0,
-            znear: 0.1,
-            zfar: 100.0,
-        }
+impl Projection {
+    pub fn new<F: Into<Rad<f32>>>(width: u32, height: u32, fovy: F, znear: f32, zfar: f32) -> Self {
+        Self { aspect: width as f32 / height as f32, fovy: fovy.into(), znear, zfar }
     }
-    pub fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
-        let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up); // 2.
-        let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
-        OPENGL_TO_WGPU_MATRIX * proj * view
+
+    pub fn resize(&mut self, width: u32, height: u32) {
+        self.aspect = width as f32 / height as f32;
+    }
+
+    pub fn calc_matrix(&self) -> Matrix4<f32> {
+        // make left handed perspective matrix?
+        OPENGL_TO_WGPU_MATRIX * perspective(self.fovy, self.aspect, self.znear, self.zfar)
     }
 }
+
+#[derive(Debug)]
 pub struct CameraController {
+    x_axis_delta: f32,
+    y_axis_delta: f32,
+    x_axis_rotation: f32,
+    y_axis_rotation: f32,
+    scroll: f32,
+    zoom_speed: f32,
     speed: f32,
-    is_up_pressed: bool,
-    is_down_pressed: bool,
-    is_forward_pressed: bool,
-    is_backward_pressed: bool,
-    is_left_pressed: bool,
-    is_right_pressed: bool,
+    sensitivity: f32,
+    reset: bool,
 }
+
 impl CameraController {
-    pub fn new(speed: f32) -> Self {
+    pub fn new(zoom_speed: f32, speed: f32, sensitivity: f32) -> Self {
         Self {
+            x_axis_delta: 0.0,
+            y_axis_delta: 0.0,
+            x_axis_rotation: 0.0,
+            y_axis_rotation: 0.0,
+            scroll: 0.0,
+            zoom_speed,
             speed,
-            is_up_pressed: false,
-            is_down_pressed: false,
-            is_forward_pressed: false,
-            is_backward_pressed: false,
-            is_left_pressed: false,
-            is_right_pressed: false,
+            sensitivity,
+            reset: false,
         }
     }
 
-    pub fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        let is_pressed = state == ElementState::Pressed;
+    pub fn process_keyboard(&mut self, key: VirtualKeyCode, _state: ElementState) -> bool {
         match key {
             VirtualKeyCode::Space => {
-                self.is_up_pressed = is_pressed;
-                true
-            }
-            VirtualKeyCode::LShift => {
-                self.is_down_pressed = is_pressed;
-                true
-            }
-            VirtualKeyCode::W | VirtualKeyCode::Up => {
-                self.is_forward_pressed = is_pressed;
-                true
-            }
-            VirtualKeyCode::A | VirtualKeyCode::Left => {
-                self.is_left_pressed = is_pressed;
-                true
-            }
-            VirtualKeyCode::S | VirtualKeyCode::Down => {
-                self.is_backward_pressed = is_pressed;
-                true
-            }
-            VirtualKeyCode::D | VirtualKeyCode::Right => {
-                self.is_right_pressed = is_pressed;
+                self.reset = true;
                 true
             }
             _ => false,
         }
     }
 
-    pub fn process_scroll(&mut self, _delta: &MouseScrollDelta) -> bool {
-        warn!("No scroll support");
-        false
+    pub fn process_left_mouse(&mut self, mouse_dx: f64, mouse_dy: f64) {
+        self.x_axis_rotation = -mouse_dx as f32;
+        self.y_axis_rotation = -mouse_dy as f32;
     }
 
-    //pub fn process_mouse(&mut self, mouse_dx: f64, mouse_dy: f64) {
-    //    self.rotate_horizontal = mouse_dx as f32;
-    //    self.rotate_vertical = mouse_dy as f32;
-    //}
+    pub fn process_middle_mouse(&mut self, mouse_dx: f64, mouse_dy: f64) {
+        self.y_axis_delta = mouse_dy as f32;
+        self.x_axis_delta = -mouse_dx as f32;
+    }
 
-    pub fn update_camera(
-        &self,
-        camera: &mut Camera,
-        _delta: Duration,
-        config: &wgpu::SurfaceConfiguration,
-    ) {
-        camera.aspect = config.width as f32 / config.height as f32;
+    pub fn process_scroll(&mut self, delta: &MouseScrollDelta) -> bool {
+        self.scroll = match delta {
+            MouseScrollDelta::LineDelta(_, scroll) => *scroll,
+            MouseScrollDelta::PixelDelta(PhysicalPosition { y: scroll, .. }) => *scroll as f32,
+        };
+        true
+    }
 
-        use cgmath::InnerSpace;
-        let forward = camera.target - camera.eye;
-        let forward_norm = forward.normalize();
-        let forward_mag = forward.magnitude();
+    pub fn update_camera(&mut self, camera: &mut Camera, dt: Duration) {
+        let dt = dt.as_secs_f32();
 
-        // Prevents glitching when camera gets too close to the
-        // center of the scene.
-        if self.is_forward_pressed && forward_mag > self.speed {
-            camera.eye += forward_norm * self.speed;
+        let (yaw_sin, yaw_cos) = camera.yaw.0.sin_cos();
+        let (pitch_sin, pitch_cos) = camera.pitch.0.sin_cos();
+
+        // Camera relative vectors
+        let x_vector = Vector3::new(-yaw_sin, 0.0, yaw_cos).normalize();
+        let y_vector = Vector3::new(-pitch_sin, pitch_cos, 0.0).normalize();
+        let z_vector =
+            Vector3::new(pitch_cos * yaw_cos, pitch_sin, pitch_cos * yaw_sin).normalize();
+
+        // Move the position based on camera
+        camera.position += z_vector * self.scroll * self.zoom_speed * self.sensitivity * dt;
+        camera.position += x_vector * self.x_axis_delta * self.speed * dt;
+        camera.position += y_vector * self.y_axis_delta * self.speed * dt;
+
+        // Camera Rotation
+        camera.yaw += Rad(self.x_axis_rotation) * self.sensitivity * dt;
+        camera.pitch += Rad(-self.y_axis_rotation) * self.sensitivity * dt;
+
+        // zero everything in case update_camera is not called on the next render loop
+        self.scroll = 0.0;
+        self.x_axis_rotation = 0.0;
+        self.y_axis_rotation = 0.0;
+        self.x_axis_delta = 0.0;
+        self.y_axis_delta = 0.0;
+
+        if camera.pitch < -Rad(FRAC_PI_2) {
+            camera.pitch = -Rad(FRAC_PI_2);
+        } else if camera.pitch > Rad(FRAC_PI_2) {
+            camera.pitch = Rad(FRAC_PI_2);
         }
-        if self.is_backward_pressed {
-            camera.eye -= forward_norm * self.speed;
-        }
 
-        let right = forward_norm.cross(camera.up);
-
-        // Redo radius calc in case the up/ down is pressed.
-        let forward = camera.target - camera.eye;
-        let forward_mag = forward.magnitude();
-
-        if self.is_right_pressed {
-            // Rescale the distance between the target and eye so
-            // that it doesn't change. The eye therefore still
-            // lies on the circle made by the target and eye.
-            camera.eye = camera.target - (forward + right * self.speed).normalize() * forward_mag;
-        }
-        if self.is_left_pressed {
-            camera.eye = camera.target - (forward - right * self.speed).normalize() * forward_mag;
+        if self.reset {
+            self.reset = false;
+            camera.yaw = cgmath::Deg(-90.0).into();
+            camera.pitch = cgmath::Deg(0.0).into();
         }
     }
 }

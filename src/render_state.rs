@@ -30,6 +30,7 @@ pub struct RenderState {
     render_pipeline: wgpu::RenderPipeline,
 
     camera_uniform: CameraUniform,
+    projection: camera::Projection,
     camera_bind_group: wgpu::BindGroup,
     camera_buffer: wgpu::Buffer,
 
@@ -46,12 +47,14 @@ pub struct RenderState {
 
     render_faces: bool,
     faces: Option<FaceMesh>,
+
+    middle_mouse_pressed: bool,
+    left_mouse_pressed: bool,
 }
 
 impl RenderState {
     pub async fn new(window: &Window) -> Self {
         let size = window.inner_size();
-
         let instance = wgpu::Instance::new(wgpu::Backends::all());
         let surface = unsafe { instance.create_surface(window) };
 
@@ -92,12 +95,13 @@ impl RenderState {
         });
 
         // Camera code
-        let mut camera = camera::Camera::new((0.0, 5.0, 10.0), &config); //cgmath::Deg(-90.0), cgmath::Deg(-20.0));
-        let camera_controller = camera::CameraController::new(0.2);
+        let camera = camera::Camera::new((0.0, 0.0, 20.0), cgmath::Deg(-90.0), cgmath::Deg(0.0));
+        let projection =
+            camera::Projection::new(config.width, config.height, cgmath::Deg(45.0), 0.1, 100.0);
+        let camera_controller = camera::CameraController::new(32.0, 1.0, 2.0);
 
         let mut camera_uniform = CameraUniform::new();
-
-        camera_uniform.update_view_proj(&mut camera);
+        camera_uniform.update_view_proj(&camera, &projection);
 
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Camera Buffer"),
@@ -181,6 +185,8 @@ impl RenderState {
         });
 
         RenderState {
+            left_mouse_pressed: false,
+            middle_mouse_pressed: false,
             surface,
             device,
             queue,
@@ -189,6 +195,7 @@ impl RenderState {
 
             render_pipeline,
 
+            projection,
             camera_uniform,
             camera_bind_group,
             camera_buffer,
@@ -222,9 +229,10 @@ impl RenderState {
         self.points = Some(PointMesh::new(&self.device, &self.queue, &points));
     }
 
-    pub fn update(&mut self, lrt: std::time::Duration) {
-        self.camera_controller.update_camera(&mut self.camera, lrt, &self.config);
-        self.camera_uniform.update_view_proj(&mut self.camera);
+    pub fn update(&mut self, dt: std::time::Duration) {
+        self.camera_controller.update_camera(&mut self.camera, dt);
+        self.projection.resize(self.config.width, self.config.height);
+        self.camera_uniform.update_view_proj(&self.camera, &self.projection);
         self.queue.write_buffer(
             &self.camera_buffer,
             0,
@@ -234,6 +242,7 @@ impl RenderState {
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
+            self.projection.resize(self.config.width, self.config.height);
             self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
@@ -245,8 +254,21 @@ impl RenderState {
 
     /// Process device input for the graphical state machine
     pub fn device_input(&mut self, event: &DeviceEvent) -> bool {
-        warn!("Unhandled device input event: {:?}", event);
-        false
+        match event {
+            DeviceEvent::MouseMotion { delta } => {
+                if self.left_mouse_pressed {
+                    self.camera_controller.process_left_mouse(delta.0, delta.1);
+                }
+                if self.middle_mouse_pressed {
+                    self.camera_controller.process_middle_mouse(delta.0, delta.1);
+                }
+                true
+            }
+            _ => {
+                warn!("Unhandled device input event: {:?}", event);
+                false
+            }
+        }
     }
 
     /// Process input for the graphical state machine
@@ -268,6 +290,24 @@ impl RenderState {
                     self.render_faces = !self.render_faces;
                 }
                 self.camera_controller.process_keyboard(*key, *state)
+            }
+            WindowEvent::MouseInput {
+                button: winit::event::MouseButton::Left,
+                state,
+                device_id: _,
+                ..
+            } => {
+                self.left_mouse_pressed = *state == ElementState::Pressed;
+                true
+            }
+            WindowEvent::MouseInput {
+                button: winit::event::MouseButton::Middle,
+                state,
+                device_id: _,
+                ..
+            } => {
+                self.middle_mouse_pressed = *state == ElementState::Pressed;
+                true
             }
             WindowEvent::MouseWheel { delta, .. } => self.camera_controller.process_scroll(delta),
             evt => {
