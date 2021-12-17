@@ -5,7 +5,7 @@ use {
         types::Point,
     },
     futures::executor,
-    log::{error, warn},
+    log::{error, info, warn},
     std::sync::mpsc::Receiver,
     winit::{
         event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
@@ -22,6 +22,8 @@ pub fn start(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut render_state = executor::block_on(RenderState::new(&window));
     let mut last_render_time = std::time::Instant::now();
+
+    let mut resolution = args.resolution;
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
@@ -62,6 +64,32 @@ pub fn start(
                             },
                         ..
                     } => *control_flow = ControlFlow::Exit,
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                state: ElementState::Pressed,
+                                virtual_keycode: Some(VirtualKeyCode::Plus),
+                                ..
+                            },
+                        ..
+                    } => {
+                        resolution += 0.1;
+                        info!("Resolution: {}", resolution);
+                        render_octree(&mut render_state, resolution, args.bound);
+                    }
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                state: ElementState::Pressed,
+                                virtual_keycode: Some(VirtualKeyCode::Minus),
+                                ..
+                            },
+                        ..
+                    } => {
+                        resolution -= 0.1;
+                        info!("Resolution: {}", resolution);
+                        render_octree(&mut render_state, resolution, args.bound);
+                    }
                     WindowEvent::KeyboardInput { .. }
                     | WindowEvent::MouseWheel { .. }
                     | WindowEvent::MouseInput { .. } => {
@@ -84,18 +112,24 @@ pub fn start(
             }
             Event::NewEvents(_) | Event::Suspended | Event::Resumed => {}
             Event::UserEvent(_) => {
-                let mut octree = Octree::new(-args.bound, args.bound);
                 let ast = ast_reciever.recv().unwrap();
-                octree.render_shape(args.resolution, ast);
-                let octants: Vec<Octant> = octree.clone().into_iter().collect();
-                let points: Vec<Point> =
-                    octree.clone().into_iter().filter_map(|o| o.feature).collect();
-                render_state.set_faces_model(octree.extract_faces());
-                render_state.set_octree_model(octants);
-                render_state.set_points_model(points);
+                render_state.set_csg_func(ast);
+                render_octree(&mut render_state, resolution, args.bound);
             }
             Event::WindowEvent { .. } => error!("bad window_id"),
             Event::LoopDestroyed => {}
         }
     })
+}
+
+fn render_octree(render_state: &mut RenderState, resolution: f32, bound: f32) {
+    if let Some(csg_func) = &render_state.csg_func {
+        let mut octree = Octree::new(-bound, bound);
+        octree.render_shape(resolution, csg_func);
+        let octants: Vec<Octant> = octree.clone().into_iter().collect();
+        let points: Vec<Point> = octree.clone().into_iter().filter_map(|o| o.feature).collect();
+        render_state.set_faces_model(octree.extract_faces());
+        render_state.set_octree_model(octants);
+        render_state.set_points_model(points);
+    }
 }

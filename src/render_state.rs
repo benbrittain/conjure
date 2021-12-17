@@ -11,6 +11,7 @@ use {
         octree::Octant,
         texture,
         types::{Face, Point},
+        CsgFunc,
     },
     log::warn,
     wgpu::util::DeviceExt,
@@ -49,6 +50,8 @@ pub struct RenderState {
 
     middle_mouse_pressed: bool,
     left_mouse_pressed: bool,
+
+    pub csg_func: Option<crate::CsgFunc>,
 }
 
 impl RenderState {
@@ -212,7 +215,13 @@ impl RenderState {
 
             render_faces: true,
             faces: None,
+
+            csg_func: None,
         }
+    }
+
+    pub fn set_csg_func(&mut self, func: CsgFunc) {
+        self.csg_func = Some(func);
     }
 
     pub fn set_octree_model(&mut self, octants: Vec<Octant>) {

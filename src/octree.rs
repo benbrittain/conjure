@@ -94,7 +94,7 @@ impl Octree {
     }
 
     /// Adds an object to the Octree rendered from the `function` at a resolution of `resolution`
-    pub fn render_shape(&mut self, resolution: f32, function: CsgFunc) -> ShapeHandle {
+    pub fn render_shape(&mut self, resolution: f32, function: &CsgFunc) -> ShapeHandle {
         let depth = (self.range.length() / resolution).log2() as u8;
         info!("Rendering a shape at a resolution of {} (depth: {})", resolution, depth);
         self.subdivide(self.range, self.range, self.range, depth, function);
@@ -150,7 +150,7 @@ impl Octree {
         y_axis: OctAxis,
         z_axis: OctAxis,
         depth: u8,
-        shape_func: CsgFunc,
+        shape_func: &CsgFunc,
     ) -> Subdivided {
         if depth == 0 {
             // We're at the bottom of the octree, generate a leaf node Octant
@@ -179,7 +179,7 @@ impl Octree {
         ];
 
         let octant_children =
-            subdivides.map(|[x, y, z]| self.subdivide(x, y, z, new_depth, shape_func.clone()));
+            subdivides.map(|[x, y, z]| self.subdivide(x, y, z, new_depth, shape_func));
 
         // Merge octants if possible
         if let Some(merged_region) = Self::merge_octants(octant_children) {
