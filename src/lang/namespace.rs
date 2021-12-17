@@ -58,6 +58,19 @@ impl Namespace {
             _ => Err(Error::UnknownTypeCheck),
         });
 
+        // csg scale
+        ns.add_function("scale", |list| match list {
+            [Ty::Number(factor), Ty::CsgFunc(func)] => {
+                let factor = *factor;
+                let func = func.clone();
+                let scaled_func = CsgFunc::new(Box::new(move |x, y, z| {
+                    func.call(x / factor, y / factor, z / factor)
+                }));
+                Ok(Ty::CsgFunc(scaled_func))
+            }
+            _ => Err(Error::UnknownTypeCheck),
+        });
+
         // csg sphere
         ns.add_function("sphere", |list| match list {
             [Ty::Number(n)] => {
