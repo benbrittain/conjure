@@ -4,6 +4,7 @@ use {
     crate::shape::CsgFunc,
     argh::FromArgs,
     log::info,
+    nalgebra::DMatrix,
     notify::{watcher, RecursiveMode, Watcher},
     std::{path::PathBuf, sync::mpsc::channel, time::Duration},
     winit::{event_loop::EventLoop, platform::unix::WindowBuilderExtUnix, window::WindowBuilder},
@@ -20,6 +21,8 @@ mod shape;
 mod texture;
 mod types;
 mod util;
+
+mod mars;
 
 #[derive(FromArgs)]
 /// Conjure shapes.
@@ -45,7 +48,11 @@ fn eval_ast(input: PathBuf) -> Result<crate::lang::Ty, Box<dyn std::error::Error
     // Parse
     let tokens = lang::Reader::read_str(&contents)?;
     let env = lang::Env::new();
-    let core_ns = lang::Namespace::new();
+    let mut core_ns = lang::Namespace::new();
+
+    core_ns.add_function("mars", |_li| Ok(crate::lang::Ty::CsgFunc(mars::mars_func())));
+
+    // Add namespace to environment
     for (sym, func) in core_ns.into_iter() {
         env.register_sym(sym, func);
     }
@@ -56,6 +63,15 @@ fn eval_ast(input: PathBuf) -> Result<crate::lang::Ty, Box<dyn std::error::Error
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let latlng = mars::Polar::new(-10.0, 359.0, 30.0);
+    dbg!(&latlng);
+    let xyz: mars::Cartesian = latlng.into();
+    dbg!(&xyz);
+    let nlatlng: mars::Polar = xyz.into();
+    dbg!(&nlatlng);
+
+    return Ok(());
+
     env_logger::init();
     info!("starting up");
 
