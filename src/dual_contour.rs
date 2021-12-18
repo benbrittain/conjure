@@ -5,6 +5,7 @@ use {
         CsgFunc,
     },
     nalgebra::{linalg::SVD, MatrixXx1, MatrixXx3, RowVector1, RowVector3, Vector3},
+    rayon::prelude::*,
 };
 
 /*
@@ -37,7 +38,7 @@ use {
 /// Locate where the isosurface intersects the line between `p1` and `p2`.
 ///
 /// To effectivly use this, one axis of the cube should be held constant
-fn find_point_on_edge(p1: Point, p2: Point, func: CsgFunc) -> Option<Point> {
+fn find_point_on_edge(p1: Point, p2: Point, func: &CsgFunc) -> Option<Point> {
     if func.call_point(p1) > func.call_point(p2) {
         // if p1 is bigger than 0, swap the direction of the points
         return find_point_on_edge(p2, p1, func);
@@ -83,9 +84,8 @@ pub fn new_feature(
     z_axis: OctAxis,
     shape_func: CsgFunc,
 ) -> Option<Point> {
-    let mut points: Vec<Point> = vec![];
 
-    for edge in [
+    let points: smallvec::SmallVec<[Point; 12]> = [
         // front left vertical
         ((x_axis.upper, y_axis.lower, z_axis.lower), (x_axis.upper, y_axis.upper, z_axis.lower)),
         // front right vertical
@@ -110,44 +110,33 @@ pub fn new_feature(
         ((x_axis.lower, y_axis.lower, z_axis.lower), (x_axis.lower, y_axis.lower, z_axis.upper)),
         // right bottom side
         ((x_axis.upper, y_axis.lower, z_axis.lower), (x_axis.upper, y_axis.lower, z_axis.upper)),
-    ] {
-        if let Some(p) = find_point_on_edge(
-            Point::new(edge.0 .0, edge.0 .1, edge.0 .2),
-            Point::new(edge.1 .0, edge.1 .1, edge.1 .2),
-            shape_func.clone(),
-        ) {
-            points.push(p);
-        }
-    }
+    ].iter().filter_map(|(p0, p1)| {
+        find_point_on_edge(Point::new(p0.0, p0.1, p0.2), Point::new(p1.0, p1.1, p1.2), &shape_func)
+    }).collect();
 
-    for p in &points {
-        if p.x > x_axis.upper || p.x < x_axis.lower {
-            panic!("x: {:?} not within {:?}", p, x_axis);
-        }
-        if p.z > z_axis.upper || p.z < z_axis.lower {
-            panic!("z: {:?} not within {:?}", p, z_axis);
-        }
-        if p.y > y_axis.upper || p.y < y_axis.lower {
-            panic!("y: {:?} not within {:?}", p, y_axis);
-        }
-    }
-
-    let mean_x = points.iter().fold(0.0, |accum, p| p.x + accum) / points.len() as f32;
-    let mean_y = points.iter().fold(0.0, |accum, p| p.y + accum) / points.len() as f32;
-    let mean_z = points.iter().fold(0.0, |accum, p| p.z + accum) / points.len() as f32;
 
     if points.len() >= 2 {
         let mut normals: Vec<Vector3<f32>> =
             points.iter().map(|p| shape_func.normal(p.x, p.y, p.z)).collect();
 
+        // TODO consider adjusting the bias again around here
+        //
+        // I'm not usually a big fan of leaving code commented out in a section, but ya know
+        // it's not a bad reminder and I'm not using a bug tracker :)
+        //
+        // ... yet
+        //
+        // let mean_x = points.iter().fold(0.0, |accum, p| p.x + accum) / points.len() as f32;
+        // let mean_y = points.iter().fold(0.0, |accum, p| p.y + accum) / points.len() as f32;
+        // let mean_z = points.iter().fold(0.0, |accum, p| p.z + accum) / points.len() as f32;
         // Add some weak bias to keeping the point within the cell
-        let strength = 0.12;
-        points.push(Point::new(mean_x, mean_y, mean_z));
-        points.push(Point::new(mean_x, mean_y, mean_z));
-        points.push(Point::new(mean_x, mean_y, mean_z));
-        normals.push(Vector3::new(strength, 0.0, 0.0));
-        normals.push(Vector3::new(0.0, strength, 0.0));
-        normals.push(Vector3::new(0.0, 0.0, strength));
+        // let strength = 0.12;
+        // points.push(Point::new(mean_x, mean_y, mean_z));
+        // points.push(Point::new(mean_x, mean_y, mean_z));
+        // points.push(Point::new(mean_x, mean_y, mean_z));
+        // normals.push(Vector3::new(strength, 0.0, 0.0));
+        // normals.push(Vector3::new(0.0, strength, 0.0));
+        // normals.push(Vector3::new(0.0, 0.0, strength));
 
         let mut rows = vec![];
         for n in &normals {

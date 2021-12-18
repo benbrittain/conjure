@@ -82,6 +82,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
+    let depth = ((args.bound * 2.0)/ args.resolution).log2() as u8;
+    eprintln!("Rendering a shape at a resolution of {} (depth: {})", args.resolution, depth);
     // Render the shape
     event_loop::start(window, event_loop, ast_recv, args.resolution, args.bound)
 }
