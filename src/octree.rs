@@ -4,10 +4,12 @@ use {
         shape::CsgFunc,
         types::{Face, Point},
     },
-    log::{info, warn},
+    log::warn,
     parking_lot::Mutex,
-    rayon::prelude::*,
 };
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 /// Index into the Octree for a unique `Octant`
 pub type OctantIdx = usize;
@@ -187,8 +189,15 @@ impl Octree {
             [right_x, bottom_y, back_z],
         ];
 
+
+        #[cfg(feature = "parallel")]
         let octant_children = subdivides
             .par_iter()
+            .map(|[x, y, z]| self.subdivide(*x, *y, *z, new_depth, shape_func));
+
+        #[cfg(not(feature = "parallel"))]
+        let octant_children = subdivides
+            .iter()
             .map(|[x, y, z]| self.subdivide(*x, *y, *z, new_depth, shape_func));
 
         let octant_children = octant_children.collect();

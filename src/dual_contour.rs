@@ -5,7 +5,6 @@ use {
         CsgFunc,
     },
     nalgebra::{linalg::SVD, MatrixXx1, MatrixXx3, RowVector1, RowVector3, Vector3},
-    rayon::prelude::*,
 };
 
 /*
@@ -116,7 +115,7 @@ pub fn new_feature(
 
 
     if points.len() >= 2 {
-        let mut normals: Vec<Vector3<f32>> =
+        let normals: Vec<Vector3<f32>> =
             points.iter().map(|p| shape_func.normal(p.x, p.y, p.z)).collect();
 
         // TODO consider adjusting the bias again around here

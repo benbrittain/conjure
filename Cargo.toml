@@ -20,7 +20,7 @@ bytemuck = { version = "1.4", features = [ "derive" ] }
 regex = "1.5"
 notify = "4.0.16"
 parking_lot = "0.11"
-rayon = "1.5"
+rayon = { version = "1.5", optional = true }
 smallvec = "1.7"
 
 [lib]
@@ -45,3 +45,7 @@ criterion = { version = "0.3", features = ["html_reports"] }
 [[bench]]
 name = "octree_render"
 harness = false
+
+[features]
+default = ["parallel"]
+parallel = ["rayon"]
