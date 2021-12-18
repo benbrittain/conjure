@@ -1,2 +1,2 @@
-(let [radius 50]
+(let [radius 5]
   (sphere radius))
