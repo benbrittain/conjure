@@ -74,8 +74,6 @@ impl Octant {
 pub struct Octree {
     // Stores all octants in the octree, child/parent relationships are maintained
     // in the Octant itself.
-    //
-    // TODO: consider a slab allocation scheme here
     octants: Vec<Octant>,
     range: OctAxis,
     root_idx: Option<OctantIdx>,
