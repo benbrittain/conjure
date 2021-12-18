@@ -33,3 +33,11 @@ name = "sphere"
 
 [profile.release]
 debug = true
+
+[dev-dependencies]
+pprof = { version = "0.6", features = ["flamegraph", "criterion"] }
+criterion = { version = "0.3", features = ["html_reports"] }
+
+[[bench]]
+name = "octree_render"
+harness = false
