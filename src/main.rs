@@ -1,25 +1,11 @@
-#![feature(array_zip)]
-
 use {
-    crate::shape::CsgFunc,
     argh::FromArgs,
+    conjure::{event_loop, lang},
     log::info,
     notify::{watcher, RecursiveMode, Watcher},
     std::{path::PathBuf, sync::mpsc::channel, time::Duration},
     winit::{event_loop::EventLoop, platform::unix::WindowBuilderExtUnix, window::WindowBuilder},
 };
-
-mod camera;
-mod dual_contour;
-mod event_loop;
-mod lang;
-mod model;
-mod octree;
-mod render_state;
-mod shape;
-mod texture;
-mod types;
-mod util;
 
 #[derive(FromArgs)]
 /// Conjure shapes.
@@ -38,7 +24,7 @@ pub struct Arguments {
     bound: f32,
 }
 
-fn eval_ast(input: PathBuf) -> Result<crate::lang::Ty, Box<dyn std::error::Error>> {
+fn eval_ast(input: PathBuf) -> Result<conjure::lang::Ty, Box<dyn std::error::Error>> {
     // Slurp the contents of the file
     let contents = std::fs::read_to_string(input)?;
 
@@ -76,7 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     watcher.watch(args.input.parent().unwrap(), RecursiveMode::Recursive)?;
 
     let ast = eval_ast(args.input.clone())?;
-    if let crate::lang::Ty::CsgFunc(csg_func) = ast {
+    if let conjure::lang::Ty::CsgFunc(csg_func) = ast {
         ast_sender.send(csg_func)?;
         proxy.send_event(())?;
     }
@@ -87,7 +73,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Ok(path) = path.canonicalize() {
                 if path == input {
                     let ast = eval_ast(path).unwrap();
-                    if let crate::lang::Ty::CsgFunc(csg_func) = ast {
+                    if let conjure::lang::Ty::CsgFunc(csg_func) = ast {
                         let _ = ast_sender.send(csg_func);
                         let _ = proxy.send_event(());
                     }
@@ -97,5 +83,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     // Render the shape
-    event_loop::start(window, event_loop, ast_recv, args)
+    event_loop::start(window, event_loop, ast_recv, args.resolution, args.bound)
 }
