@@ -1,23 +1,25 @@
 use conjure::{octree::Octree, shape::CsgFunc};
-use criterion::{black_box, BenchmarkId, Criterion, criterion_main, criterion_group};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use pprof::criterion::{Output, PProfProfiler};
 
-fn octree(resolution: f32) {
+const BOUND: f32 = 256.0;
+
+fn sphere_shape(bound: f32, resolution: f32) {
     let radius = 100.0;
     let csg_func = CsgFunc::new(Box::new(move |x, y, z| {
-        (((0.0 - z) * (0.0 - z)) + ((0.0 - x) * (0.0 - x)) + ((0.0 - y) * (0.0 - y))).sqrt()
+        ((0.0 - z).powi(2) + (0.0 - x).powi(2) + (0.0 - y).powi(2)).sqrt()
             - radius
     }));
-    let mut octree = Octree::new(-128.0, 128.0);
+    let mut octree = Octree::new(-bound, bound);
     octree.render_shape(resolution, &csg_func);
 }
 
 fn bench_group(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Octree resolutions");
-
-    for s in &[0.5, 1.0, 2.0, 10.0, 20.0] {
-        group.bench_with_input(BenchmarkId::from_parameter(s), s, |b, s| {
-            b.iter(|| octree(black_box(*s)))
+    let mut group = c.benchmark_group("octree_render");
+    for depth in [2, 4, 6, 8] {
+        let resolution = BOUND / 2.0_f32.powi(depth);
+        group.bench_with_input(BenchmarkId::from_parameter(depth), &resolution, |b, s| {
+            b.iter(|| sphere_shape(BOUND / 2.0, black_box(*s)))
         });
     }
 }
