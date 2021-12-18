@@ -127,10 +127,10 @@ fn render_octree(render_state: &mut RenderState, resolution: f32, bound: f32) {
     if let Some(csg_func) = &render_state.csg_func {
         let mut octree = Octree::new(-bound, bound);
         octree.render_shape(resolution, csg_func);
-        let octants: Vec<Octant> = octree.clone().into_iter().collect();
-        let points: Vec<Point> = octree.clone().into_iter().filter_map(|o| o.feature).collect();
         render_state.set_faces_model(octree.extract_faces());
-        render_state.set_octree_model(octants);
+        let octants: Vec<Octant> = octree.into_iter().collect();
+        render_state.set_octree_model(octants.clone());
+        let points: Vec<Point> = octants.into_iter().filter_map(|o| o.feature).collect();
         render_state.set_points_model(points);
     }
 }

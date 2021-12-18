@@ -329,6 +329,7 @@ dependencies = [
  "log",
  "nalgebra",
  "notify",
+ "parking_lot",
  "pprof",
  "regex",
  "thiserror",

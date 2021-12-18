@@ -5,6 +5,7 @@ use {
         types::{Face, Point},
     },
     log::{info, warn},
+    parking_lot::{Mutex, RwLock},
 };
 
 /// Index into the Octree for a unique `Octant`
@@ -70,13 +71,13 @@ impl Octant {
 }
 
 /// Stores a 3d representation of the shape functions at arbitrary resolutions.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Octree {
     // Stores all octants in the octree, child/parent relationships are maintained
     // in the Octant itself.
-    octants: Vec<Octant>,
+    octants: Mutex<Vec<Octant>>,
     range: OctAxis,
-    root_idx: Option<OctantIdx>,
+    root_idx: RwLock<Option<OctantIdx>>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -88,7 +89,11 @@ enum Subdivided {
 impl Octree {
     /// Creates a new octree bounding the space of `bounds` in 3 dimensions.
     pub fn new(lower_bound: f32, upper_bound: f32) -> Self {
-        Octree { octants: vec![], range: OctAxis::new(lower_bound, upper_bound), root_idx: None }
+        Octree {
+            octants: Mutex::new(vec![]),
+            range: OctAxis::new(lower_bound, upper_bound),
+            root_idx: RwLock::new(None),
+        }
     }
 
     /// Adds an object to the Octree rendered from the `function` at a resolution of `resolution`
@@ -101,21 +106,23 @@ impl Octree {
     }
 
     pub fn extract_faces(&self) -> Vec<Face> {
-        match self.root_idx {
+        match *self.root_idx.read() {
             Some(idx) => dual_contour::cell_proc(self, idx),
             None => vec![],
         }
     }
 
     /// Adds an Octant to the Octree returning an `OctantIdx` to represent it's place in the tree.
-    fn add_octant(&mut self, oct: Octant) -> OctantIdx {
-        self.octants.push(oct);
-        self.octants.len() - 1
+    fn add_octant(&self, oct: Octant) -> OctantIdx {
+        let mut octants = self.octants.lock();
+        octants.push(oct);
+        octants.len() - 1
     }
 
     /// Returns a refrence to an `Octant` from an `OctantIdx`
-    pub fn get_octant(&self, idx: OctantIdx) -> &Octant {
-        &self.octants[idx]
+    pub fn get_octant(&self, idx: OctantIdx) -> Octant {
+        let octants = self.octants.lock();
+        octants[idx].clone()
     }
 
     /// Checks if the `Subdivided` regions can be merged into a single octant.
@@ -143,7 +150,7 @@ impl Octree {
     }
 
     fn subdivide(
-        &mut self,
+        &self,
         x_axis: OctAxis,
         y_axis: OctAxis,
         z_axis: OctAxis,
@@ -197,11 +204,16 @@ impl Octree {
                     self.add_octant(Octant::new(x, y, z, feature))
                 }
             });
-        self.octants[root].children = Some(octant_children);
+
+        {
+            let mut octants = self.octants.lock();
+            octants[root].children = Some(octant_children);
+        }
 
         // This region is now the rootiest root, unless it's deep in the subdivide
         // graph, then it'll be replaced by the parent caller.
-        self.root_idx = Some(root);
+        let mut root_idx = self.root_idx.write();
+        *root_idx = Some(root);
 
         Subdivided::Idx(root)
     }
@@ -237,8 +249,10 @@ impl IntoIterator for Octree {
     type IntoIter = OctreeIter;
 
     fn into_iter(self) -> Self::IntoIter {
-        match self.root_idx {
-            Some(root_idx) => OctreeIter { nodes: self.octants, queue: vec![root_idx] },
+        match *self.root_idx.read() {
+            Some(root_idx) => {
+                OctreeIter { nodes: self.octants.lock().clone(), queue: vec![root_idx] }
+            }
             None => {
                 eprintln!("Octree has no root index!");
                 OctreeIter { nodes: vec![], queue: vec![] }

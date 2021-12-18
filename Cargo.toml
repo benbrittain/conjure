@@ -19,6 +19,7 @@ futures = {version = "0.3", features = ["executor"]}
 bytemuck = { version = "1.4", features = [ "derive" ] }
 regex = "1.5"
 notify = "4.0.16"
+parking_lot = "0.11"
 
 [lib]
 name = "conjure"

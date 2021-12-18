@@ -7,8 +7,7 @@ const BOUND: f32 = 256.0;
 fn sphere_shape(bound: f32, resolution: f32) {
     let radius = 100.0;
     let csg_func = CsgFunc::new(Box::new(move |x, y, z| {
-        ((0.0 - z).powi(2) + (0.0 - x).powi(2) + (0.0 - y).powi(2)).sqrt()
-            - radius
+        ((0.0 - z).powi(2) + (0.0 - x).powi(2) + (0.0 - y).powi(2)).sqrt() - radius
     }));
     let mut octree = Octree::new(-bound, bound);
     octree.render_shape(resolution, &csg_func);
