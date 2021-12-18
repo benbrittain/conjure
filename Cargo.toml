@@ -27,3 +27,9 @@ path = "src/lib.rs"
 [[bin]]
 name = "conjure-bin"
 path = "src/main.rs"
+
+[[example]]
+name = "sphere"
+
+[profile.release]
+debug = true
