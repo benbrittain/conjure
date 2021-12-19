@@ -37,6 +37,7 @@ name = "sphere"
 [profile.release]
 debug = true
 panic = "abort"
+lto = "thin"
 
 [dev-dependencies]
 pprof = { version = "0.6", features = ["flamegraph", "criterion"] }
