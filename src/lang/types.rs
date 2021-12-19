@@ -1,7 +1,7 @@
 use {
     super::error::Error,
     crate::shape::CsgFunc,
-    std::{collections::HashMap, fmt},
+    std::{collections::HashMap, fmt, sync::Arc},
 };
 
 #[derive(PartialEq, Eq, Clone, Debug, Hash)]
@@ -22,7 +22,7 @@ pub enum Ty {
     Keyword(String),
     HashMap(HashMap<KeyTy, Ty>),
     Function(fn(&[Ty]) -> Result<Ty, Error>),
-    CsgFunc(CsgFunc),
+    CsgFunc(Arc<CsgFunc>),
 }
 
 impl std::fmt::Debug for Ty {

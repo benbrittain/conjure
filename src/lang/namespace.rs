@@ -1,7 +1,10 @@
 use {
     super::{error::Error, types::Ty},
     crate::shape::CsgFunc,
-    std::collections::{hash_map::IntoIter, HashMap},
+    std::{
+        collections::{hash_map::IntoIter, HashMap},
+        sync::Arc,
+    },
 };
 
 pub struct Namespace(HashMap<String, Ty>);
@@ -40,7 +43,7 @@ impl Namespace {
                 let func = CsgFunc::new(Box::new(move |x, y, z| {
                     f32::min(fn1.call(x, y, z), fn2.call(x, y, z))
                 }));
-                Ok(Ty::CsgFunc(func))
+                Ok(Ty::CsgFunc(Arc::new(func)))
             }
             _ => Err(Error::UnknownTypeCheck),
         });
@@ -53,7 +56,7 @@ impl Namespace {
                 let func = CsgFunc::new(Box::new(move |x, y, z| {
                     f32::max(fn1.call(x, y, z), fn2.call(x, y, z))
                 }));
-                Ok(Ty::CsgFunc(func))
+                Ok(Ty::CsgFunc(Arc::new(func)))
             }
             _ => Err(Error::UnknownTypeCheck),
         });
@@ -66,7 +69,7 @@ impl Namespace {
                 let scaled_func = CsgFunc::new(Box::new(move |x, y, z| {
                     func.call(x / factor, y / factor, z / factor)
                 }));
-                Ok(Ty::CsgFunc(scaled_func))
+                Ok(Ty::CsgFunc(Arc::new(scaled_func)))
             }
             _ => Err(Error::UnknownTypeCheck),
         });
@@ -80,7 +83,7 @@ impl Namespace {
                         .sqrt()
                         - radius
                 }));
-                Ok(Ty::CsgFunc(func))
+                Ok(Ty::CsgFunc(Arc::new(func)))
             }
             _ => Err(Error::UnknownTypeCheck),
         });
@@ -109,7 +112,7 @@ impl Namespace {
                         ),
                     )
                 }));
-                Ok(Ty::CsgFunc(func))
+                Ok(Ty::CsgFunc(Arc::new(func)))
             }
             _ => Err(Error::UnknownTypeCheck),
         });

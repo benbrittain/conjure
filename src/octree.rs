@@ -189,16 +189,14 @@ impl Octree {
             [right_x, bottom_y, back_z],
         ];
 
-
         #[cfg(feature = "parallel")]
         let octant_children = subdivides
             .par_iter()
             .map(|[x, y, z]| self.subdivide(*x, *y, *z, new_depth, shape_func));
 
         #[cfg(not(feature = "parallel"))]
-        let octant_children = subdivides
-            .iter()
-            .map(|[x, y, z]| self.subdivide(*x, *y, *z, new_depth, shape_func));
+        let octant_children =
+            subdivides.iter().map(|[x, y, z]| self.subdivide(*x, *y, *z, new_depth, shape_func));
 
         let octant_children = octant_children.collect();
         // Merge octants if possible
@@ -215,7 +213,7 @@ impl Octree {
             octant_children.iter().zip(subdivides).map(|(child, [x, y, z])| match child {
                 Subdivided::Idx(idx) => *idx,
                 Subdivided::Value(_) => {
-                    let feature = dual_contour::new_feature(x, y, z, shape_func.clone());
+                    let feature = dual_contour::new_feature(x, y, z, shape_func);
                     self.add_octant(Octant::new(x, y, z, feature))
                 }
             });

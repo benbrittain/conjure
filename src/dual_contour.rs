@@ -81,9 +81,8 @@ pub fn new_feature(
     x_axis: OctAxis,
     y_axis: OctAxis,
     z_axis: OctAxis,
-    shape_func: CsgFunc,
+    shape_func: &CsgFunc,
 ) -> Option<Point> {
-
     let points: smallvec::SmallVec<[Point; 12]> = [
         // front left vertical
         ((x_axis.upper, y_axis.lower, z_axis.lower), (x_axis.upper, y_axis.upper, z_axis.lower)),
@@ -109,10 +108,12 @@ pub fn new_feature(
         ((x_axis.lower, y_axis.lower, z_axis.lower), (x_axis.lower, y_axis.lower, z_axis.upper)),
         // right bottom side
         ((x_axis.upper, y_axis.lower, z_axis.lower), (x_axis.upper, y_axis.lower, z_axis.upper)),
-    ].iter().filter_map(|(p0, p1)| {
+    ]
+    .iter()
+    .filter_map(|(p0, p1)| {
         find_point_on_edge(Point::new(p0.0, p0.1, p0.2), Point::new(p1.0, p1.1, p1.2), &shape_func)
-    }).collect();
-
+    })
+    .collect();
 
     if points.len() >= 2 {
         let normals: Vec<Vector3<f32>> =

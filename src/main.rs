@@ -1,9 +1,9 @@
 use {
     argh::FromArgs,
-    conjure::{event_loop, lang},
+    conjure::{event_loop, lang, shape::CsgFunc},
     log::info,
     notify::{watcher, RecursiveMode, Watcher},
-    std::{path::PathBuf, sync::mpsc::channel, time::Duration},
+    std::{path::PathBuf, sync::mpsc::channel, sync::Arc, time::Duration},
     winit::{event_loop::EventLoop, platform::unix::WindowBuilderExtUnix, window::WindowBuilder},
 };
 
@@ -58,11 +58,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (tx, rx) = channel();
     let (ast_sender, ast_recv) = channel();
 
-    let mut watcher = watcher(tx, Duration::from_micros(10))?;
+    let mut watcher = watcher(tx, Duration::from_micros(4))?;
     watcher.watch(args.input.parent().unwrap(), RecursiveMode::Recursive)?;
 
     let ast = eval_ast(args.input.clone())?;
     if let conjure::lang::Ty::CsgFunc(csg_func) = ast {
+        let csg_func: CsgFunc =
+            Arc::try_unwrap(csg_func).expect("No refrences to the ast should remain");
         ast_sender.send(csg_func)?;
         proxy.send_event(())?;
     }
@@ -74,6 +76,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if path == input {
                     let ast = eval_ast(path).unwrap();
                     if let conjure::lang::Ty::CsgFunc(csg_func) = ast {
+                        let csg_func: CsgFunc = Arc::try_unwrap(csg_func)
+                            .expect("No refrences to the ast should remain");
                         let _ = ast_sender.send(csg_func);
                         let _ = proxy.send_event(());
                     }
@@ -82,7 +86,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    let depth = ((args.bound * 2.0)/ args.resolution).log2() as u8;
+    let depth = ((args.bound * 2.0) / args.resolution).log2() as u8;
     eprintln!("Rendering a shape at a resolution of {} (depth: {})", args.resolution, depth);
     // Render the shape
     event_loop::start(window, event_loop, ast_recv, args.resolution, args.bound)
