@@ -83,7 +83,7 @@ pub fn new_feature(
     z_axis: OctAxis,
     shape_func: &CsgFunc,
 ) -> Option<Point> {
-    let points: smallvec::SmallVec<[Point; 12]> = [
+    let mut points: smallvec::SmallVec<[Point; 12]> = [
         // front left vertical
         ((x_axis.upper, y_axis.lower, z_axis.lower), (x_axis.upper, y_axis.upper, z_axis.lower)),
         // front right vertical
@@ -116,27 +116,20 @@ pub fn new_feature(
     .collect();
 
     if points.len() >= 2 {
-        let normals: Vec<Vector3<f32>> =
+        let mut normals: Vec<Vector3<f32>> =
             points.iter().map(|p| shape_func.normal(p.x, p.y, p.z)).collect();
 
-        // TODO consider adjusting the bias again around here
-        //
-        // I'm not usually a big fan of leaving code commented out in a section, but ya know
-        // it's not a bad reminder and I'm not using a bug tracker :)
-        //
-        // ... yet
-        //
-        // let mean_x = points.iter().fold(0.0, |accum, p| p.x + accum) / points.len() as f32;
-        // let mean_y = points.iter().fold(0.0, |accum, p| p.y + accum) / points.len() as f32;
-        // let mean_z = points.iter().fold(0.0, |accum, p| p.z + accum) / points.len() as f32;
+        let mean_x = points.iter().fold(0.0, |accum, p| p.x + accum) / points.len() as f32;
+        let mean_y = points.iter().fold(0.0, |accum, p| p.y + accum) / points.len() as f32;
+        let mean_z = points.iter().fold(0.0, |accum, p| p.z + accum) / points.len() as f32;
         // Add some weak bias to keeping the point within the cell
-        // let strength = 0.12;
-        // points.push(Point::new(mean_x, mean_y, mean_z));
-        // points.push(Point::new(mean_x, mean_y, mean_z));
-        // points.push(Point::new(mean_x, mean_y, mean_z));
-        // normals.push(Vector3::new(strength, 0.0, 0.0));
-        // normals.push(Vector3::new(0.0, strength, 0.0));
-        // normals.push(Vector3::new(0.0, 0.0, strength));
+        let strength = 0.12;
+        points.push(Point::new(mean_x, mean_y, mean_z));
+        points.push(Point::new(mean_x, mean_y, mean_z));
+        points.push(Point::new(mean_x, mean_y, mean_z));
+        normals.push(Vector3::new(strength, 0.0, 0.0));
+        normals.push(Vector3::new(0.0, strength, 0.0));
+        normals.push(Vector3::new(0.0, 0.0, strength));
 
         let mut rows = vec![];
         for n in &normals {
