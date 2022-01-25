@@ -21,3 +21,16 @@ Rough prototype at the moment.
 )
 ```
 ![rendering of union](examples/union.png)
+
+
+### Benchmarking
+```
+cargo bench --bench octree_render
+```
+report at: `target/criterion/report/index.html`
+
+```
+cargo bench --bench octree_render -- --profile-time=10
+```
+flamegraphs at: `target/criterion/octree_render/<depth>/profile/flamegraph.svg`
+

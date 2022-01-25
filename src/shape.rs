@@ -1,15 +1,14 @@
-use {crate::types::Point, nalgebra::Vector3, std::sync::Arc};
+use {crate::types::Point, nalgebra::Vector3};
 
 type CsgTy = dyn Fn(f32, f32, f32) -> f32 + std::marker::Send + std::marker::Sync;
 
-#[derive(Clone)]
 pub struct CsgFunc {
-    func: Arc<CsgTy>,
+    func: Box<CsgTy>,
 }
 
 impl CsgFunc {
     pub fn new(func: Box<CsgTy>) -> Self {
-        CsgFunc { func: Arc::from(func) }
+        CsgFunc { func }
     }
 
     pub fn call(&self, x: f32, y: f32, z: f32) -> f32 {
@@ -27,5 +26,11 @@ impl CsgFunc {
             self.call(x, y, z + 0.001) - self.call(x, y, z - 0.001),
         )
         .normalize()
+    }
+}
+
+impl std::fmt::Debug for CsgFunc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CsgFunc").finish()
     }
 }

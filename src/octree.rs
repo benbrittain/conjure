@@ -4,8 +4,12 @@ use {
         shape::CsgFunc,
         types::{Face, Point},
     },
-    log::{info, warn},
+    log::warn,
+    parking_lot::Mutex,
 };
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 /// Index into the Octree for a unique `Octant`
 pub type OctantIdx = usize;
@@ -70,13 +74,11 @@ impl Octant {
 }
 
 /// Stores a 3d representation of the shape functions at arbitrary resolutions.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Octree {
     // Stores all octants in the octree, child/parent relationships are maintained
     // in the Octant itself.
-    //
-    // TODO: consider a slab allocation scheme here
-    octants: Vec<Octant>,
+    octants: Mutex<Vec<Octant>>,
     range: OctAxis,
     root_idx: Option<OctantIdx>,
 }
@@ -90,14 +92,21 @@ enum Subdivided {
 impl Octree {
     /// Creates a new octree bounding the space of `bounds` in 3 dimensions.
     pub fn new(lower_bound: f32, upper_bound: f32) -> Self {
-        Octree { octants: vec![], range: OctAxis::new(lower_bound, upper_bound), root_idx: None }
+        Octree {
+            octants: Mutex::new(vec![]),
+            range: OctAxis::new(lower_bound, upper_bound),
+            root_idx: None,
+        }
     }
 
     /// Adds an object to the Octree rendered from the `function` at a resolution of `resolution`
     pub fn render_shape(&mut self, resolution: f32, function: &CsgFunc) -> ShapeHandle {
         let depth = (self.range.length() / resolution).log2() as u8;
-        info!("Rendering a shape at a resolution of {} (depth: {})", resolution, depth);
-        self.subdivide(self.range, self.range, self.range, depth, function);
+        if let Subdivided::Idx(root_idx) =
+            self.subdivide(self.range, self.range, self.range, depth, function)
+        {
+            self.root_idx = Some(root_idx);
+        }
         warn!("Rendering a shape, ShapeHandle not yet implemented");
         0
     }
@@ -110,21 +119,23 @@ impl Octree {
     }
 
     /// Adds an Octant to the Octree returning an `OctantIdx` to represent it's place in the tree.
-    fn add_octant(&mut self, oct: Octant) -> OctantIdx {
-        self.octants.push(oct);
-        self.octants.len() - 1
+    fn add_octant(&self, oct: Octant) -> OctantIdx {
+        let mut octants = self.octants.lock();
+        octants.push(oct);
+        octants.len() - 1
     }
 
     /// Returns a refrence to an `Octant` from an `OctantIdx`
-    pub fn get_octant(&self, idx: OctantIdx) -> &Octant {
-        &self.octants[idx]
+    pub fn get_octant(&self, idx: OctantIdx) -> Octant {
+        let octants = self.octants.lock();
+        octants[idx].clone()
     }
 
     /// Checks if the `Subdivided` regions can be merged into a single octant.
     /// Examples: all the subregions are contained within the shape.
     ///
     /// TODO: add some fancier logic, bilinear interpolation perhaps?
-    fn merge_octants(octant_children: [Subdivided; 8]) -> Option<Subdivided> {
+    fn merge_octants(octant_children: &Vec<Subdivided>) -> Option<Subdivided> {
         // If all the values are within the shape, unify the region
         if octant_children.iter().all(|&x| match x {
             Subdivided::Value(x) => x < 0.0,
@@ -145,7 +156,7 @@ impl Octree {
     }
 
     fn subdivide(
-        &mut self,
+        &self,
         x_axis: OctAxis,
         y_axis: OctAxis,
         z_axis: OctAxis,
@@ -178,11 +189,18 @@ impl Octree {
             [right_x, bottom_y, back_z],
         ];
 
-        let octant_children =
-            subdivides.map(|[x, y, z]| self.subdivide(x, y, z, new_depth, shape_func));
+        #[cfg(feature = "parallel")]
+        let octant_children = subdivides
+            .par_iter()
+            .map(|[x, y, z]| self.subdivide(*x, *y, *z, new_depth, shape_func));
 
+        #[cfg(not(feature = "parallel"))]
+        let octant_children =
+            subdivides.iter().map(|[x, y, z]| self.subdivide(*x, *y, *z, new_depth, shape_func));
+
+        let octant_children = octant_children.collect();
         // Merge octants if possible
-        if let Some(merged_region) = Self::merge_octants(octant_children) {
+        if let Some(merged_region) = Self::merge_octants(&octant_children) {
             return merged_region;
         }
 
@@ -192,18 +210,21 @@ impl Octree {
         // If the subdivide region already exists, return it's index,
         // otherwise create a new octant.
         let octant_children =
-            octant_children.zip(subdivides).map(|(child, [x, y, z])| match child {
-                Subdivided::Idx(idx) => idx,
+            octant_children.iter().zip(subdivides).map(|(child, [x, y, z])| match child {
+                Subdivided::Idx(idx) => *idx,
                 Subdivided::Value(_) => {
-                    let feature = dual_contour::new_feature(x, y, z, shape_func.clone());
+                    let feature = dual_contour::new_feature(x, y, z, shape_func);
                     self.add_octant(Octant::new(x, y, z, feature))
                 }
             });
-        self.octants[root].children = Some(octant_children);
 
-        // This region is now the rootiest root, unless it's deep in the subdivide
-        // graph, then it'll be replaced by the parent caller.
-        self.root_idx = Some(root);
+        // keep this outside the lock, it collects os the children which also need the lock
+        let octant_children: Vec<OctantIdx> = octant_children.collect();
+        let octant_children = octant_children.try_into().unwrap();
+        {
+            let mut octants = self.octants.lock();
+            octants[root].children = Some(octant_children);
+        }
 
         Subdivided::Idx(root)
     }
@@ -240,7 +261,9 @@ impl IntoIterator for Octree {
 
     fn into_iter(self) -> Self::IntoIter {
         match self.root_idx {
-            Some(root_idx) => OctreeIter { nodes: self.octants, queue: vec![root_idx] },
+            Some(root_idx) => {
+                OctreeIter { nodes: self.octants.lock().clone(), queue: vec![root_idx] }
+            }
             None => {
                 eprintln!("Octree has no root index!");
                 OctreeIter { nodes: vec![], queue: vec![] }

@@ -18,12 +18,13 @@ pub fn start(
     window: Window,
     event_loop: EventLoop<()>,
     ast_reciever: Receiver<crate::shape::CsgFunc>,
-    args: crate::Arguments,
+    resolution: f32,
+    bound: f32,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut render_state = executor::block_on(RenderState::new(&window));
     let mut last_render_time = std::time::Instant::now();
 
-    let mut resolution = args.resolution;
+    let mut resolution = resolution;
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
@@ -75,7 +76,7 @@ pub fn start(
                     } => {
                         resolution += 0.1;
                         info!("Resolution: {}", resolution);
-                        render_octree(&mut render_state, resolution, args.bound);
+                        render_octree(&mut render_state, resolution, bound);
                     }
                     WindowEvent::KeyboardInput {
                         input:
@@ -88,7 +89,7 @@ pub fn start(
                     } => {
                         resolution -= 0.1;
                         info!("Resolution: {}", resolution);
-                        render_octree(&mut render_state, resolution, args.bound);
+                        render_octree(&mut render_state, resolution, bound);
                     }
                     WindowEvent::KeyboardInput { .. }
                     | WindowEvent::MouseWheel { .. }
@@ -114,7 +115,7 @@ pub fn start(
             Event::UserEvent(_) => {
                 let ast = ast_reciever.recv().unwrap();
                 render_state.set_csg_func(ast);
-                render_octree(&mut render_state, resolution, args.bound);
+                render_octree(&mut render_state, resolution, bound);
             }
             Event::WindowEvent { .. } => error!("bad window_id"),
             Event::LoopDestroyed => {}
@@ -126,10 +127,10 @@ fn render_octree(render_state: &mut RenderState, resolution: f32, bound: f32) {
     if let Some(csg_func) = &render_state.csg_func {
         let mut octree = Octree::new(-bound, bound);
         octree.render_shape(resolution, csg_func);
-        let octants: Vec<Octant> = octree.clone().into_iter().collect();
-        let points: Vec<Point> = octree.clone().into_iter().filter_map(|o| o.feature).collect();
         render_state.set_faces_model(octree.extract_faces());
-        render_state.set_octree_model(octants);
+        let octants: Vec<Octant> = octree.into_iter().collect();
+        render_state.set_octree_model(octants.clone());
+        let points: Vec<Point> = octants.into_iter().filter_map(|o| o.feature).collect();
         render_state.set_points_model(points);
     }
 }
